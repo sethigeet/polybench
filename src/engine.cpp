@@ -1,7 +1,9 @@
 #include "engine.hpp"
 
-#include <iostream>
 #include <vector>
+
+#define LOGGER_NAME "Engine"
+#include "logger.hpp"
 
 Engine::Engine(std::shared_ptr<Strategy> strategy) : strategy_(strategy) {
   strategy_->set_engine_callbacks(
@@ -13,7 +15,7 @@ Engine::Engine(std::shared_ptr<Strategy> strategy) : strategy_(strategy) {
 }
 
 void Engine::run() {
-  std::cout << "[Engine] Starting simulation..." << std::endl;
+  LOG_INFO("Starting simulation...");
 
   // Generate some dummy data for simulation
   // These represent Level 2 market data updates (total qty at each price level)
@@ -36,5 +38,5 @@ void Engine::run() {
     strategy_->on_tick(tick);
   }
 
-  std::cout << "[Engine] Simulation finished." << std::endl;
+  LOG_INFO("Simulation finished.");
 }

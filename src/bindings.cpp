@@ -5,9 +5,19 @@
 #include "strategy.hpp"
 #include "types.hpp"
 
+#define LOGGER_NAME "Python"
+#include "logger.hpp"
+
 namespace py = pybind11;
 
 PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
+  // Logging submodule
+  auto m_log = m.def_submodule("logger", "Logging utilities");
+  m_log.def("info", [](const std::string& msg) { LOG_INFO(msg); });
+  m_log.def("warn", [](const std::string& msg) { LOG_WARN(msg); });
+  m_log.def("error", [](const std::string& msg) { LOG_ERROR(msg); });
+  m_log.def("debug", [](const std::string& msg) { LOG_DEBUG(msg); });
+
   py::enum_<Side>(m, "Side").value("Bid", Side::Bid).value("Ask", Side::Ask);
 
   py::class_<MarketTick>(m, "MarketTick")

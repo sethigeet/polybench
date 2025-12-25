@@ -1,17 +1,17 @@
 #include "mock_exchange.hpp"
 
-#include <iostream>
+#define LOGGER_NAME "Exchange"
+#include "logger.hpp"
 
 void MockExchange::submit_order(const Order &order) {
   orders_[order.id] = order;
-  std::cout << "[Exchange] Order Received: " << order.id << " Price: " << order.price
-            << " Size: " << order.quantity
-            << " Side: " << (order.side == Side::Bid ? "BUY" : "SELL") << std::endl;
+  LOG_INFO("Order Received: {} Price: {} Size: {} Side: {}", order.id, order.price, order.quantity,
+           (order.side == Side::Bid ? "BUY" : "SELL"));
 }
 
 void MockExchange::cancel_order(uint64_t order_id) {
   if (orders_.erase(order_id)) {
-    std::cout << "[Exchange] Order Cancelled: " << order_id << std::endl;
+    LOG_INFO("Order Cancelled: {}", order_id);
   }
 }
 
@@ -93,8 +93,7 @@ std::vector<FillReport> MockExchange::match(const MarketTick &tick) {
     if (should_fill) {
       double fill_price = calculate_fill_price(order, tick);
       fills.push_back({order.id, fill_price, order.quantity, tick.timestamp});
-      std::cout << "[Exchange] Order Filled: " << order.id << " @ " << fill_price
-                << " (qty: " << order.quantity << ")" << std::endl;
+      LOG_INFO("Order Filled: {} @ {} (qty: {})", order.id, fill_price, order.quantity);
       it = orders_.erase(it);  // Full fill
     } else {
       ++it;

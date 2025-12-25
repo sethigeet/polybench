@@ -1,12 +1,14 @@
 #include <pybind11/embed.h>
 
-#include <iostream>
-
 #include "engine.hpp"
+#include "logger.hpp"
 
 namespace py = pybind11;
 
 int main() {
+  logger::init();
+  LOG_INFO("Initializing AlgoBench...");
+
   // Load and initialize Python Interpreter once
   py::scoped_interpreter guard{};
 
@@ -29,10 +31,10 @@ int main() {
     Engine engine(strategy);
     engine.run();
   } catch (py::error_already_set &e) {
-    std::cerr << "[Python Error] " << e.what() << std::endl;
+    spdlog::get("Python")->error("Python Error: {}", e.what());
     return 1;
   } catch (const std::exception &e) {
-    std::cerr << "[Error] " << e.what() << std::endl;
+    LOG_ERROR("Critical Error: {}", e.what());
     return 1;
   }
 
