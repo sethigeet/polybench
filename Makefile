@@ -1,4 +1,5 @@
 BUILD_DIR = build
+BUILD_TYPE ?= Debug
 EXECUTABLE = algobench
 
 .PHONY: all configure build run clean
@@ -6,7 +7,7 @@ EXECUTABLE = algobench
 all: build
 
 configure:
-	cmake -S . -B $(BUILD_DIR)
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
 build: configure
 	cmake --build $(BUILD_DIR)
