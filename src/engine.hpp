@@ -1,8 +1,8 @@
 #pragma once
 #include <memory>
 
-#include "mock_exchange.hpp"
-#include "order_book.hpp"
+#include "dual_layer_book.hpp"
+#include "exchange.hpp"
 #include "strategy.hpp"
 
 class Engine {
@@ -12,6 +12,6 @@ class Engine {
 
  private:
   std::shared_ptr<Strategy> strategy_;
-  MockExchange exchange_;
-  OrderBook book_;
+  Exchange exchange_;
+  DualLayerBook book_;
 };

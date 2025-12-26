@@ -1,15 +1,7 @@
 #pragma once
 #include <cstdint>
-#include <string>
 
-enum class Side { Bid, Ask };
-
-struct MarketTick {
-  uint64_t timestamp;
-  double price;
-  double quantity;
-  Side side;
-};
+enum class Side { Buy, Sell };
 
 struct Order {
   uint64_t id;

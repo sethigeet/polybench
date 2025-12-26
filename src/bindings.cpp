@@ -3,7 +3,8 @@
 #include <pybind11/stl.h>
 
 #include "strategy.hpp"
-#include "types.hpp"
+#include "types/common.hpp"
+#include "types/polymarket.hpp"
 
 #define LOGGER_NAME "Python"
 #include "logger.hpp"
@@ -18,13 +19,47 @@ PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
   m_log.def("error", [](const std::string& msg) { LOG_ERROR(msg); });
   m_log.def("debug", [](const std::string& msg) { LOG_DEBUG(msg); });
 
-  py::enum_<Side>(m, "Side").value("Bid", Side::Bid).value("Ask", Side::Ask);
+  py::enum_<Side>(m, "Side").value("Buy", Side::Buy).value("Sell", Side::Sell);
 
-  py::class_<MarketTick>(m, "MarketTick")
-      .def_readonly("price", &MarketTick::price)
-      .def_readonly("quantity", &MarketTick::quantity)
-      .def_readonly("side", &MarketTick::side)
-      .def_readonly("timestamp", &MarketTick::timestamp);
+  // Order summary for book snapshots
+  py::class_<OrderSummary>(m, "OrderSummary")
+      .def_readonly("price", &OrderSummary::price)
+      .def_readonly("size", &OrderSummary::size);
+
+  // Book snapshot message
+  py::class_<BookMessage>(m, "BookMessage")
+      .def_readonly("asset_id", &BookMessage::asset_id)
+      .def_readonly("market", &BookMessage::market)
+      .def_readonly("bids", &BookMessage::bids)
+      .def_readonly("asks", &BookMessage::asks)
+      .def_readonly("timestamp", &BookMessage::timestamp)
+      .def_readonly("hash", &BookMessage::hash);
+
+  // Single price change
+  py::class_<PriceChange>(m, "PriceChange")
+      .def_readonly("asset_id", &PriceChange::asset_id)
+      .def_readonly("price", &PriceChange::price)
+      .def_readonly("size", &PriceChange::size)
+      .def_readonly("side", &PriceChange::side)
+      .def_readonly("hash", &PriceChange::hash)
+      .def_readonly("best_bid", &PriceChange::best_bid)
+      .def_readonly("best_ask", &PriceChange::best_ask);
+
+  // Price change message
+  py::class_<PriceChangeMessage>(m, "PriceChangeMessage")
+      .def_readonly("market", &PriceChangeMessage::market)
+      .def_readonly("price_changes", &PriceChangeMessage::price_changes)
+      .def_readonly("timestamp", &PriceChangeMessage::timestamp);
+
+  // Last trade message (trade tape)
+  py::class_<LastTradeMessage>(m, "LastTradeMessage")
+      .def_readonly("asset_id", &LastTradeMessage::asset_id)
+      .def_readonly("market", &LastTradeMessage::market)
+      .def_readonly("price", &LastTradeMessage::price)
+      .def_readonly("side", &LastTradeMessage::side)
+      .def_readonly("size", &LastTradeMessage::size)
+      .def_readonly("fee_rate_bps", &LastTradeMessage::fee_rate_bps)
+      .def_readonly("timestamp", &LastTradeMessage::timestamp);
 
   py::class_<Order>(m, "Order")
       .def(py::init<uint64_t, double, double, Side, uint64_t>())
@@ -40,7 +75,9 @@ PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
 
   py::class_<Strategy, PyStrategy, std::shared_ptr<Strategy>>(m, "Strategy")
       .def(py::init<>())
-      .def("on_tick", &Strategy::on_tick)
+      .def("on_book", &Strategy::on_book)
+      .def("on_price_change", &Strategy::on_price_change)
+      .def("on_trade", &Strategy::on_trade)
       .def("on_fill", &Strategy::on_fill)
       .def("submit_order", &Strategy::submit_order)
       .def("cancel_order", &Strategy::cancel_order)

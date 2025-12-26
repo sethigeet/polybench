@@ -5,39 +5,73 @@ class MyStrategy(Strategy):
     def __init__(self):
         super().__init__()
         self.order_id_counter = 1
-        logger.info("MyStrategy Initialized")
 
-    def on_tick(self, tick):
+    def on_book(self, msg):
+        """Called when a book snapshot is received"""
+        best_bid = self.get_best_bid()
+        best_ask = self.get_best_ask()
+        logger.info(
+            f"Book snapshot received. Best Bid: {best_bid}, Best Ask: {best_ask}, "
+            f"Bids: {len(msg.bids)}, Asks: {len(msg.asks)}"
+        )
+
+    def on_price_change(self, msg):
+        """Called when price changes occur"""
         best_bid = self.get_best_bid()
         best_ask = self.get_best_ask()
         mid_price = self.get_mid_price()
         spread = self.get_spread()
 
-        mid_str = f"{mid_price:.2f}" if mid_price is not None else "N/A"
+        mid_str = f"{mid_price:.4f}" if mid_price is not None else "N/A"
         spread_str = f"{spread:.4f}" if spread is not None else "N/A"
 
-        logger.debug(f"on_tick: Price={tick.price} Size={tick.quantity}")
+        for change in msg.price_changes:
+            side_str = "BUY" if change.side == Side.Buy else "SELL"
+            logger.debug(
+                f"Price change: {side_str} @ {change.price:.4f}, new_size={change.size:.2f}"
+            )
+
         logger.debug(
-            f"Book State: Bid={best_bid}, Ask={best_ask}, Mid={mid_str}, Spread={spread_str}"
+            f"Live Book: Bid={best_bid}, Ask={best_ask}, Mid={mid_str}, Spread={spread_str}"
         )
 
-        # Strategy logic: Buy when spread is tight and price is below mid
+        # Price is probability (0.01 - 0.99)
         if mid_price is not None and spread is not None:
-            if spread < 2.0 and tick.price < mid_price:
-                logger.info("Buying - tight spread and price below mid!")
-                self.submit_order(
-                    Order(
-                        self.order_id_counter, tick.price, 1.0, Side.Bid, tick.timestamp
+            # If spread is tight (<0.02) and we think probability is underpriced
+            if spread < 0.02:
+                if mid_price < 0.50:
+                    # Buy YES shares - expect probability to increase
+                    logger.info(f"Buying YES at {best_ask:.4f} - tight spread, bullish")
+                    self.submit_order(
+                        Order(
+                            self.order_id_counter,
+                            best_ask,
+                            10.0,
+                            Side.Buy,
+                            msg.timestamp,
+                        )
                     )
-                )
-                self.order_id_counter += 1
-        elif tick.price < 100.0:
-            # Fallback strategy: Buy aggressively if no book data is available
-            logger.info("Buying aggressively (no book data)!")
-            self.submit_order(
-                Order(self.order_id_counter, tick.price, 1.0, Side.Bid, tick.timestamp)
-            )
-            self.order_id_counter += 1
+                    self.order_id_counter += 1
+                elif mid_price > 0.50:
+                    # Sell YES shares (or buy NO) - expect probability to decrease
+                    logger.info(
+                        f"Selling YES at {best_bid:.4f} - tight spread, bearish"
+                    )
+                    self.submit_order(
+                        Order(
+                            self.order_id_counter,
+                            best_bid,
+                            10.0,
+                            Side.Sell,
+                            msg.timestamp,
+                        )
+                    )
+                    self.order_id_counter += 1
+
+    def on_trade(self, msg):
+        """Called when a trade occurs on the market"""
+        side_str = "BUY" if msg.side == Side.Buy else "SELL"
+        logger.debug(f"Trade: {side_str} {msg.size:.2f} @ {msg.price:.4f}")
 
     def on_fill(self, fill):
-        logger.info(f"on_fill: Order {fill.order_id} filled @ {fill.filled_price}")
+        logger.info(f"Order {fill.order_id} filled @ {fill.filled_price:.4f}")

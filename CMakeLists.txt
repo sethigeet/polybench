@@ -27,8 +27,8 @@ find_package(Python 3.10 COMPONENTS Interpreter Development REQUIRED)
 add_library(algobench_core 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/engine.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_exchange.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/order_book.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dual_layer_book.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/exchange.cpp
 )
 
 target_include_directories(algobench_core PUBLIC src)
