@@ -69,35 +69,18 @@ void Exchange::add_maker_order(const Order& order) {
   LOG_INFO("Maker Order Queued: {} @ {} (volume_ahead: {})", order.id, order.price, volume_ahead);
 }
 
-std::vector<FillReport> Exchange::process_price_change(const PriceChangeMessage& msg) {
-  std::vector<FillReport> fills;
+std::vector<FillReport> Exchange::process_trade(const LastTradeMessage& trade) {
+  if (!book_) return {};
 
-  if (!book_) return fills;
+  Side maker_side = (trade.side == Side::Buy) ? Side::Sell : Side::Buy;
 
-  for (const auto& change : msg.price_changes) {
-    double old_size = (change.side == Side::Buy) ? book_->get_live_bid_depth(change.price)
-                                                 : book_->get_live_ask_depth(change.price);
+  LOG_DEBUG("Processing trade: asset {} @ {} size {} (taker: {})", trade.asset_id, trade.price,
+            trade.size, trade.side == Side::Buy ? "BUY" : "SELL");
 
-    // Check for reduction in size (indicates trades or cancels)
-    if (change.size < old_size) {
-      double reduction = old_size - change.size;
-
-      // Process fills for virtual orders at this price
-      // For bids in the book, we're tracking when SELL orders at that price get filled
-      // For asks in the book, we're tracking when BUY orders at that price get filled
-      // So if the bid side shrinks, it means sellers got filled
-      // And if the ask side shrinks, it means buyers got filled
-      Side order_side = (change.side == Side::Buy) ? Side::Sell : Side::Buy;
-
-      auto price_fills = process_virtual_fills(change.price, order_side, reduction, msg.timestamp);
-      fills.insert(fills.end(), price_fills.begin(), price_fills.end());
-    }
-  }
-
-  return fills;
+  return process_virtual_fills(trade.price, maker_side, trade.size, trade.timestamp);
 }
 
-std::vector<FillReport> Exchange::process_virtual_fills(double price, Side side, double reduction,
+std::vector<FillReport> Exchange::process_virtual_fills(double price, Side side, double trade_size,
                                                         uint64_t timestamp) {
   std::vector<FillReport> fills;
   auto& virtual_orders = book_->get_virtual_orders();
@@ -106,7 +89,7 @@ std::vector<FillReport> Exchange::process_virtual_fills(double price, Side side,
 
   for (auto& order : virtual_orders) {
     if (order.price == price && order.side == side) {
-      order.volume_ahead -= reduction;
+      order.volume_ahead -= trade_size;
 
       if (order.volume_ahead <= 0) {
         fills.push_back({order.id, price, order.quantity, timestamp});
