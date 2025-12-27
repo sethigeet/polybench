@@ -1,6 +1,8 @@
 #pragma once
 #include <pybind11/pybind11.h>
 
+#include <atomic>
+#include <chrono>
 #include <functional>
 
 #include "dual_layer_book.hpp"
@@ -24,8 +26,15 @@ class Strategy {
 
   void set_book(const DualLayerBook *book) { book_ = book; }
 
-  void submit_order(const Order &order) {
+  uint64_t submit_order(double price, double quantity, Side side) {
+    uint64_t order_id = next_order_id_.fetch_add(1, std::memory_order_relaxed);
+    uint64_t timestamp =
+        static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::utc_clock::now().time_since_epoch())
+                                  .count());
+    Order order{order_id, price, quantity, side, timestamp};
     if (submit_order_fn) submit_order_fn(order);
+    return order_id;
   }
 
   void cancel_order(uint64_t id) {
@@ -60,6 +69,7 @@ class Strategy {
   std::function<void(const Order &)> submit_order_fn;
   std::function<void(uint64_t)> cancel_order_fn;
   const DualLayerBook *book_ = nullptr;
+  std::atomic<uint64_t> next_order_id_{1};
 };
 
 // Trampoline class for Pybind11

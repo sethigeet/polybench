@@ -1,10 +1,9 @@
-from algobench_core import Order, Side, Strategy, logger
+from algobench_core import Side, Strategy, logger
 
 
 class MyStrategy(Strategy):
     def __init__(self):
         super().__init__()
-        self.order_id_counter = 1
 
     def on_book(self, msg):
         """Called when a book snapshot is received"""
@@ -42,31 +41,15 @@ class MyStrategy(Strategy):
                 if mid_price < 0.50:
                     # Buy YES shares - expect probability to increase
                     logger.info(f"Buying YES at {best_ask:.4f} - tight spread, bullish")
-                    self.submit_order(
-                        Order(
-                            self.order_id_counter,
-                            best_ask,
-                            10.0,
-                            Side.Buy,
-                            msg.timestamp,
-                        )
-                    )
-                    self.order_id_counter += 1
+                    order_id = self.submit_order(best_ask, 10.0, Side.Buy)
+                    logger.debug(f"Order submitted with ID: {order_id}")
                 elif mid_price > 0.50:
                     # Sell YES shares (or buy NO) - expect probability to decrease
                     logger.info(
                         f"Selling YES at {best_bid:.4f} - tight spread, bearish"
                     )
-                    self.submit_order(
-                        Order(
-                            self.order_id_counter,
-                            best_bid,
-                            10.0,
-                            Side.Sell,
-                            msg.timestamp,
-                        )
-                    )
-                    self.order_id_counter += 1
+                    order_id = self.submit_order(best_bid, 10.0, Side.Sell)
+                    logger.debug(f"Order submitted with ID: {order_id}")
 
     def on_trade(self, msg):
         """Called when a trade occurs on the market"""

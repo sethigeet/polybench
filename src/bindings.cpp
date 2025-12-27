@@ -79,7 +79,9 @@ PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
       .def("on_price_change", &Strategy::on_price_change)
       .def("on_trade", &Strategy::on_trade)
       .def("on_fill", &Strategy::on_fill)
-      .def("submit_order", &Strategy::submit_order)
+      .def("submit_order", &Strategy::submit_order, py::arg("price"), py::arg("quantity"),
+           py::arg("side"),
+           "Submit an order with given parameters. Returns the auto-generated order ID.")
       .def("cancel_order", &Strategy::cancel_order)
       .def("get_best_bid", &Strategy::get_best_bid,
            "Get the best bid price, or None if no bids available")
