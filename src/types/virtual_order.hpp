@@ -5,7 +5,8 @@
 #include "common.hpp"
 
 struct VirtualOrder {
-  std::string asset_id;
+  std::string market_id;
+  Outcome outcome;
   uint64_t id;
   double price;
   double quantity;

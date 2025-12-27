@@ -3,16 +3,19 @@
 #include <string>
 
 enum class Side { Buy, Sell };
+enum class Outcome { Yes, No };
 
 struct OrderRequest {
-  std::string asset_id;
+  std::string market_id;
+  Outcome outcome;
   double price;
   double quantity;
   Side side;
 };
 
 struct Order {
-  std::string asset_id;
+  std::string market_id;
+  Outcome outcome;
   uint64_t id;
   double price;
   double quantity;
@@ -21,7 +24,8 @@ struct Order {
 };
 
 struct FillReport {
-  std::string asset_id;
+  std::string market_id;
+  Outcome outcome;
   uint64_t order_id;
   double filled_price;
   double filled_quantity;

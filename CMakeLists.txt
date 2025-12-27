@@ -21,14 +21,15 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(pybind11 spdlog)
 
-find_package(Python 3.10 COMPONENTS Interpreter Development REQUIRED)
+# pybind11 automatically finds the Python interpreter and development files
+# find_package(Python 3.10 COMPONENTS Interpreter Development REQUIRED)
 
 # Core library
 add_library(polybench_core 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/engine.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/dual_layer_book.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/market_book.cpp
 )
 
 target_include_directories(polybench_core PUBLIC src)

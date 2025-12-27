@@ -21,12 +21,12 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
 
   py::enum_<Side>(m, "Side").value("Buy", Side::Buy).value("Sell", Side::Sell);
 
-  // Order summary for book snapshots
+  py::enum_<Outcome>(m, "Outcome").value("Yes", Outcome::Yes).value("No", Outcome::No);
+
   py::class_<OrderSummary>(m, "OrderSummary")
       .def_readonly("price", &OrderSummary::price)
       .def_readonly("size", &OrderSummary::size);
 
-  // Book snapshot message
   py::class_<BookMessage>(m, "BookMessage")
       .def_readonly("asset_id", &BookMessage::asset_id)
       .def_readonly("market", &BookMessage::market)
@@ -35,7 +35,6 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("timestamp", &BookMessage::timestamp)
       .def_readonly("hash", &BookMessage::hash);
 
-  // Single price change
   py::class_<PriceChange>(m, "PriceChange")
       .def_readonly("asset_id", &PriceChange::asset_id)
       .def_readonly("price", &PriceChange::price)
@@ -45,13 +44,11 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("best_bid", &PriceChange::best_bid)
       .def_readonly("best_ask", &PriceChange::best_ask);
 
-  // Price change message
   py::class_<PriceChangeMessage>(m, "PriceChangeMessage")
       .def_readonly("market", &PriceChangeMessage::market)
       .def_readonly("price_changes", &PriceChangeMessage::price_changes)
       .def_readonly("timestamp", &PriceChangeMessage::timestamp);
 
-  // Last trade message (trade tape)
   py::class_<LastTradeMessage>(m, "LastTradeMessage")
       .def_readonly("asset_id", &LastTradeMessage::asset_id)
       .def_readonly("market", &LastTradeMessage::market)
@@ -62,23 +59,26 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("timestamp", &LastTradeMessage::timestamp);
 
   py::class_<OrderRequest>(m, "OrderRequest")
-      .def(py::init<std::string, double, double, Side>(), py::arg("asset_id"), py::arg("price"),
-           py::arg("quantity"), py::arg("side"))
-      .def_readwrite("asset_id", &OrderRequest::asset_id)
+      .def(py::init<std::string, Outcome, double, double, Side>(), py::arg("market_id"),
+           py::arg("outcome"), py::arg("price"), py::arg("quantity"), py::arg("side"))
+      .def_readwrite("market_id", &OrderRequest::market_id)
+      .def_readwrite("outcome", &OrderRequest::outcome)
       .def_readwrite("price", &OrderRequest::price)
       .def_readwrite("quantity", &OrderRequest::quantity)
       .def_readwrite("side", &OrderRequest::side);
 
   py::class_<Order>(m, "Order")
-      .def(py::init<std::string, uint64_t, double, double, Side, uint64_t>())
-      .def_readonly("asset_id", &Order::asset_id)
+      .def(py::init<std::string, Outcome, uint64_t, double, double, Side, uint64_t>())
+      .def_readonly("market_id", &Order::market_id)
+      .def_readonly("outcome", &Order::outcome)
       .def_readonly("id", &Order::id)
       .def_readonly("price", &Order::price)
       .def_readonly("quantity", &Order::quantity)
       .def_readonly("side", &Order::side);
 
   py::class_<FillReport>(m, "FillReport")
-      .def_readonly("asset_id", &FillReport::asset_id)
+      .def_readonly("market_id", &FillReport::market_id)
+      .def_readonly("outcome", &FillReport::outcome)
       .def_readonly("order_id", &FillReport::order_id)
       .def_readonly("filled_price", &FillReport::filled_price)
       .def_readonly("filled_quantity", &FillReport::filled_quantity);
@@ -91,18 +91,26 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def("on_fill", &Strategy::on_fill)
       .def("submit_order", &Strategy::submit_order, py::arg("request"),
            "Submit an order using OrderRequest. Returns the auto-generated order ID.")
-      .def("cancel_order", &Strategy::cancel_order, py::arg("asset_id"), py::arg("order_id"),
-           "Cancel an order by asset_id and order_id")
-      .def("get_best_bid", &Strategy::get_best_bid, py::arg("asset_id"),
-           "Get the best bid price for an asset, or None if no bids available")
-      .def("get_best_ask", &Strategy::get_best_ask, py::arg("asset_id"),
-           "Get the best ask price for an asset, or None if no asks available")
-      .def("get_mid_price", &Strategy::get_mid_price, py::arg("asset_id"),
-           "Get the mid-price for an asset, or None if not available")
-      .def("get_spread", &Strategy::get_spread, py::arg("asset_id"),
-           "Get the bid-ask spread for an asset, or None if not available")
-      .def("get_bid_depth", &Strategy::get_bid_depth, py::arg("asset_id"), py::arg("price"),
-           "Get the quantity available at a specific bid price level for an asset")
-      .def("get_ask_depth", &Strategy::get_ask_depth, py::arg("asset_id"), py::arg("price"),
-           "Get the quantity available at a specific ask price level for an asset");
+      .def("cancel_order", &Strategy::cancel_order, py::arg("market_id"), py::arg("order_id"),
+           "Cancel an order by market_id and order_id")
+      .def("get_outcome", &Strategy::get_outcome, py::arg("market_id"), py::arg("asset_id"),
+           "Get the Outcome (Yes/No) for an asset_id in a market")
+      // YES side getters
+      .def("get_yes_best_bid", &Strategy::get_yes_best_bid, py::arg("market_id"),
+           "Get the best YES bid price for a market, or None if no bids available")
+      .def("get_yes_best_ask", &Strategy::get_yes_best_ask, py::arg("market_id"),
+           "Get the best YES ask price for a market, or None if no asks available")
+      .def("get_yes_bid_depth", &Strategy::get_yes_bid_depth, py::arg("market_id"),
+           py::arg("price"), "Get the YES bid quantity at a specific price level")
+      .def("get_yes_ask_depth", &Strategy::get_yes_ask_depth, py::arg("market_id"),
+           py::arg("price"), "Get the YES ask quantity at a specific price level")
+      // NO side getters
+      .def("get_no_best_bid", &Strategy::get_no_best_bid, py::arg("market_id"),
+           "Get the best NO bid price for a market, or None if no bids available")
+      .def("get_no_best_ask", &Strategy::get_no_best_ask, py::arg("market_id"),
+           "Get the best NO ask price for a market, or None if no asks available")
+      .def("get_no_bid_depth", &Strategy::get_no_bid_depth, py::arg("market_id"), py::arg("price"),
+           "Get the NO bid quantity at a specific price level")
+      .def("get_no_ask_depth", &Strategy::get_no_ask_depth, py::arg("market_id"), py::arg("price"),
+           "Get the NO ask quantity at a specific price level");
 }
