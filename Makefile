@@ -1,6 +1,6 @@
 BUILD_DIR = build
 BUILD_TYPE ?= Debug
-EXECUTABLE = algobench
+EXECUTABLE = polybench
 
 .PHONY: all configure build run clean
 

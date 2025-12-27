@@ -9,7 +9,7 @@
 namespace logger {
 
 bool is_fancy_enabled() {
-  const char* env = std::getenv("ALGOBENCH_PLAIN_LOGS");
+  const char* env = std::getenv("POLYBENCH_PLAIN_LOGS");
   if (env && std::string(env) == "1") {
     return false;
   }

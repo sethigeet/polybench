@@ -11,7 +11,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
+PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
   // Logging submodule
   auto m_log = m.def_submodule("logger", "Logging utilities");
   m_log.def("info", [](const std::string& msg) { LOG_INFO(msg); });

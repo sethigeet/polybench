@@ -1,4 +1,4 @@
-from algobench_core import OrderRequest, Side, Strategy, logger
+from polybench_core import OrderRequest, Side, Strategy, logger
 
 
 class MyStrategy(Strategy):

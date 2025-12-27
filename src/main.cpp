@@ -7,7 +7,7 @@ namespace py = pybind11;
 
 int main() {
   logger::init();
-  LOG_INFO("Initializing AlgoBench...");
+  LOG_INFO("Initializing PolyBench...");
 
   // Load and initialize Python Interpreter once
   py::scoped_interpreter guard{};
