@@ -61,14 +61,24 @@ PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
       .def_readonly("fee_rate_bps", &LastTradeMessage::fee_rate_bps)
       .def_readonly("timestamp", &LastTradeMessage::timestamp);
 
+  py::class_<OrderRequest>(m, "OrderRequest")
+      .def(py::init<std::string, double, double, Side>(), py::arg("asset_id"), py::arg("price"),
+           py::arg("quantity"), py::arg("side"))
+      .def_readwrite("asset_id", &OrderRequest::asset_id)
+      .def_readwrite("price", &OrderRequest::price)
+      .def_readwrite("quantity", &OrderRequest::quantity)
+      .def_readwrite("side", &OrderRequest::side);
+
   py::class_<Order>(m, "Order")
-      .def(py::init<uint64_t, double, double, Side, uint64_t>())
-      .def_readwrite("id", &Order::id)
-      .def_readwrite("price", &Order::price)
-      .def_readwrite("quantity", &Order::quantity)
-      .def_readwrite("side", &Order::side);
+      .def(py::init<std::string, uint64_t, double, double, Side, uint64_t>())
+      .def_readonly("asset_id", &Order::asset_id)
+      .def_readonly("id", &Order::id)
+      .def_readonly("price", &Order::price)
+      .def_readonly("quantity", &Order::quantity)
+      .def_readonly("side", &Order::side);
 
   py::class_<FillReport>(m, "FillReport")
+      .def_readonly("asset_id", &FillReport::asset_id)
       .def_readonly("order_id", &FillReport::order_id)
       .def_readonly("filled_price", &FillReport::filled_price)
       .def_readonly("filled_quantity", &FillReport::filled_quantity);
@@ -79,20 +89,20 @@ PYBIND11_EMBEDDED_MODULE(algobench_core, m) {
       .def("on_price_change", &Strategy::on_price_change)
       .def("on_trade", &Strategy::on_trade)
       .def("on_fill", &Strategy::on_fill)
-      .def("submit_order", &Strategy::submit_order, py::arg("price"), py::arg("quantity"),
-           py::arg("side"),
-           "Submit an order with given parameters. Returns the auto-generated order ID.")
-      .def("cancel_order", &Strategy::cancel_order)
-      .def("get_best_bid", &Strategy::get_best_bid,
-           "Get the best bid price, or None if no bids available")
-      .def("get_best_ask", &Strategy::get_best_ask,
-           "Get the best ask price, or None if no asks available")
-      .def("get_mid_price", &Strategy::get_mid_price,
-           "Get the mid-price (avg of best bid and ask), or None if not "
-           "available")
-      .def("get_spread", &Strategy::get_spread, "Get the bid-ask spread, or None if not available")
-      .def("get_bid_depth", &Strategy::get_bid_depth, py::arg("price"),
-           "Get the quantity available at a specific bid price level")
-      .def("get_ask_depth", &Strategy::get_ask_depth, py::arg("price"),
-           "Get the quantity available at a specific ask price level");
+      .def("submit_order", &Strategy::submit_order, py::arg("request"),
+           "Submit an order using OrderRequest. Returns the auto-generated order ID.")
+      .def("cancel_order", &Strategy::cancel_order, py::arg("asset_id"), py::arg("order_id"),
+           "Cancel an order by asset_id and order_id")
+      .def("get_best_bid", &Strategy::get_best_bid, py::arg("asset_id"),
+           "Get the best bid price for an asset, or None if no bids available")
+      .def("get_best_ask", &Strategy::get_best_ask, py::arg("asset_id"),
+           "Get the best ask price for an asset, or None if no asks available")
+      .def("get_mid_price", &Strategy::get_mid_price, py::arg("asset_id"),
+           "Get the mid-price for an asset, or None if not available")
+      .def("get_spread", &Strategy::get_spread, py::arg("asset_id"),
+           "Get the bid-ask spread for an asset, or None if not available")
+      .def("get_bid_depth", &Strategy::get_bid_depth, py::arg("asset_id"), py::arg("price"),
+           "Get the quantity available at a specific bid price level for an asset")
+      .def("get_ask_depth", &Strategy::get_ask_depth, py::arg("asset_id"), py::arg("price"),
+           "Get the quantity available at a specific ask price level for an asset");
 }

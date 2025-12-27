@@ -9,10 +9,12 @@
 Engine::Engine(std::shared_ptr<Strategy> strategy) : strategy_(strategy) {
   strategy_->set_engine_callbacks(
       [this](const Order& order) { this->exchange_.submit_order(order); },
-      [this](uint64_t id) { this->exchange_.cancel_order(id); });
+      [this](const std::string& asset_id, uint64_t id) {
+        this->exchange_.cancel_order(asset_id, id);
+      });
 
-  strategy_->set_book(&book_);
-  exchange_.set_book(&book_);
+  strategy_->set_books(&books_);
+  exchange_.set_books(&books_);
 }
 
 void Engine::run() {
@@ -36,16 +38,15 @@ void Engine::run() {
       {0.48, 200.0},
   };
 
-  // Apply initial book snapshot
-  book_.on_book_message(initial_snapshot);
-  LOG_INFO("Initial book snapshot applied. Best Bid: {}, Best Ask: {}",
-           book_.get_live_best_bid().value_or(0), book_.get_live_best_ask().value_or(0));
+  books_[initial_snapshot.asset_id].on_book_message(initial_snapshot);
+  auto& book = books_[initial_snapshot.asset_id];
+  LOG_INFO("Initial book snapshot applied for asset {}. Best Bid: {}, Best Ask: {}",
+           initial_snapshot.asset_id, book.get_live_best_bid().value_or(0),
+           book.get_live_best_ask().value_or(0));
 
-  // Notify strategy of initial book state
   strategy_->on_book(initial_snapshot);
 
   // Polymarket API sends either a last_trade_price message OR a price_change message
-  // These are independent events, not bundled together
   using MarketMessage = std::variant<PriceChangeMessage, LastTradeMessage>;
 
   std::vector<MarketMessage> messages = {
@@ -108,13 +109,24 @@ void Engine::run() {
             }
             strategy_->on_trade(message);
           } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
-            book_.on_price_change(message);
+            for (const auto& change : message.price_changes) {
+              // Create new entry if doesn't exist
+              auto& book = books_[change.asset_id];
+              PriceChangeMessage single_change{message.market, {change}, message.timestamp};
+              book.on_price_change(single_change);
+            }
             strategy_->on_price_change(message);
           }
         },
         msg);
   }
 
-  LOG_INFO("Simulation finished. Final Best Bid: {}, Best Ask: {}",
-           book_.get_live_best_bid().value_or(0), book_.get_live_best_ask().value_or(0));
+  std::ostringstream ss;
+  ss << "Simulation finished. Final book states:\n";
+  for (const auto& [asset_id, asset_book] : books_) {
+    ss << "\tAsset: " << asset_id
+       << " Final Best Bid: " << asset_book.get_live_best_bid().value_or(0)
+       << " Best Ask: " << asset_book.get_live_best_ask().value_or(0) << "\n";
+  }
+  LOG_INFO(ss.str());
 }

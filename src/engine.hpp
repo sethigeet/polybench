@@ -1,5 +1,7 @@
 #pragma once
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "dual_layer_book.hpp"
 #include "exchange.hpp"
@@ -13,5 +15,5 @@ class Engine {
  private:
   std::shared_ptr<Strategy> strategy_;
   Exchange exchange_;
-  DualLayerBook book_;
+  std::unordered_map<std::string, DualLayerBook> books_;
 };
