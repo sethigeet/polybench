@@ -5,6 +5,7 @@
 
 #include "exchange.hpp"
 #include "market_book.hpp"
+#include "portfolio_tracker.hpp"
 #include "strategy.hpp"
 
 class Engine {
@@ -16,4 +17,5 @@ class Engine {
   std::shared_ptr<Strategy> strategy_;
   std::unordered_map<std::string, MarketBook> books_;  // market_id -> MarketBook
   Exchange exchange_;
+  PortfolioTracker portfolio_;
 };

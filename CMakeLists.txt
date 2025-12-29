@@ -30,6 +30,7 @@ add_library(polybench_core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/exchange.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/market_book.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/portfolio_tracker.cpp
 )
 
 target_include_directories(polybench_core PUBLIC src)

@@ -29,7 +29,7 @@ class Exchange {
  public:
   void set_books(std::unordered_map<std::string, MarketBook>* books) { books_ = books; }
 
-  void submit_order(const Order& order);
+  std::optional<FillReport> submit_order(const Order& order);
   void cancel_order(const std::string& market_id, uint64_t order_id);
 
   std::vector<FillReport> process_trade(const LastTradeMessage& trade);

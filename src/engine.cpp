@@ -8,7 +8,13 @@
 
 Engine::Engine(std::shared_ptr<Strategy> strategy) : strategy_(strategy) {
   strategy_->set_engine_callbacks(
-      [this](const Order& order) { this->exchange_.submit_order(order); },
+      [this](const Order& order) {
+        auto fill = this->exchange_.submit_order(order);
+        if (fill) {
+          strategy_->on_fill(*fill);
+          portfolio_.on_fill(*fill);
+        }
+      },
       [this](const std::string& market_id, uint64_t id) {
         this->exchange_.cancel_order(market_id, id);
       });
@@ -64,11 +70,11 @@ void Engine::run() {
   books_[market_id].on_book_message(no_snapshot);
 
   auto& book = books_[market_id];
-  LOG_INFO("Initial book snapshot applied for market {}.", market_id);
-  LOG_INFO("  YES: Best Bid: {}, Best Ask: {}", book.get_yes_best_bid().value_or(0),
-           book.get_yes_best_ask().value_or(0));
-  LOG_INFO("  NO:  Best Bid: {}, Best Ask: {}", book.get_no_best_bid().value_or(0),
-           book.get_no_best_ask().value_or(0));
+  LOG_DEBUG("Initial book snapshot applied for market {}.", market_id);
+  LOG_DEBUG("\tYES: Best Bid: {}, Best Ask: {}", book.get_yes_best_bid().value_or(0),
+            book.get_yes_best_ask().value_or(0));
+  LOG_DEBUG("\tNO:  Best Bid: {}, Best Ask: {}", book.get_no_best_bid().value_or(0),
+            book.get_no_best_ask().value_or(0));
 
   strategy_->on_book(yes_snapshot);
   strategy_->on_book(no_snapshot);
@@ -108,18 +114,84 @@ void Engine::run() {
             auto fills = exchange_.process_trade(message);
             for (const auto& fill : fills) {
               strategy_->on_fill(fill);
+              portfolio_.on_fill(fill);
             }
             strategy_->on_trade(message);
+
+            // Update MTM prices from trade
+            auto& book = books_[message.market];
+            auto outcome_opt = book.get_outcome(message.asset_id);
+            if (outcome_opt) {
+              // Use best bid/ask midpoint for MTM
+              if (*outcome_opt == Outcome::Yes) {
+                auto bid = book.get_yes_best_bid();
+                auto ask = book.get_yes_best_ask();
+                if (bid && ask) {
+                  portfolio_.update_mark_to_market(message.market, *outcome_opt, (*bid + *ask) / 2);
+                } else {
+                  portfolio_.update_mark_to_market(message.market, *outcome_opt,
+                                                   bid.value_or(*ask));
+                }
+              } else {
+                auto bid = book.get_no_best_bid();
+                auto ask = book.get_no_best_ask();
+                if (bid && ask) {
+                  portfolio_.update_mark_to_market(message.market, *outcome_opt, (*bid + *ask) / 2);
+                } else {
+                  portfolio_.update_mark_to_market(message.market, *outcome_opt,
+                                                   bid.value_or(*ask));
+                }
+              }
+            }
           } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
             for (const auto& change : message.price_changes) {
-              // Create new entry if doesn't exist
               auto& book = books_[message.market];
               book.on_price_change(change);
+
+              // Update MTM prices
+              auto outcome_opt = book.get_outcome(change.asset_id);
+              if (outcome_opt) {
+                if (*outcome_opt == Outcome::Yes) {
+                  auto bid = book.get_yes_best_bid();
+                  auto ask = book.get_yes_best_ask();
+                  if (bid && ask) {
+                    portfolio_.update_mark_to_market(message.market, *outcome_opt,
+                                                     (*bid + *ask) / 2);
+                  } else {
+                    portfolio_.update_mark_to_market(message.market, *outcome_opt,
+                                                     bid.value_or(*ask));
+                  }
+                } else {
+                  auto bid = book.get_no_best_bid();
+                  auto ask = book.get_no_best_ask();
+                  if (bid && ask) {
+                    portfolio_.update_mark_to_market(message.market, *outcome_opt,
+                                                     (*bid + *ask) / 2);
+                  } else {
+                    portfolio_.update_mark_to_market(message.market, *outcome_opt,
+                                                     bid.value_or(*ask));
+                  }
+                }
+              }
             }
             strategy_->on_price_change(message);
           }
         },
         msg);
+
+    portfolio_.record_equity_snapshot();
+  }
+
+  // Print portfolio summary
+  LOG_INFO("=== Portfolio Summary ===");
+  LOG_INFO("Realized PnL: {:.4f}", portfolio_.get_realized_pnl());
+  LOG_INFO("Unrealized PnL: {:.4f}", portfolio_.get_unrealized_pnl());
+  LOG_INFO("Total PnL: {:.4f}", portfolio_.get_total_pnl());
+  double sharpe = portfolio_.get_sharpe_ratio();
+  if (sharpe != 0.0) {
+    LOG_INFO("Sharpe Ratio: {:.4f}", sharpe);
+  } else {
+    LOG_INFO("Sharpe Ratio: N/A (insufficient data)");
   }
 
   std::ostringstream ss;
@@ -131,5 +203,5 @@ void Engine::run() {
     ss << "\t  NO:  Best Bid: " << market_book.get_no_best_bid().value_or(0)
        << " Best Ask: " << market_book.get_no_best_ask().value_or(0) << "\n";
   }
-  LOG_INFO(ss.str());
+  LOG_DEBUG(ss.str());
 }

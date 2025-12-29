@@ -10,32 +10,33 @@ MarketBook* Exchange::get_book(const std::string& market_id) {
   return &it->second;
 }
 
-void Exchange::submit_order(const Order& order) {
+std::optional<FillReport> Exchange::submit_order(const Order& order) {
   if (!polymarket::is_valid_price(order.price)) {
     throw PriceValidationError(fmt::format("Invalid price: {} Must be between {} and {}",
                                            order.price, polymarket::MIN_PRICE,
                                            polymarket::MAX_PRICE));
   }
 
-  LOG_INFO("Order Received: {} Market: {} Outcome: {} Price: {} Size: {} Side: {}", order.id,
-           order.market_id, (order.outcome == Outcome::Yes ? "YES" : "NO"), order.price,
-           order.quantity, (order.side == Side::Buy ? "BUY" : "SELL"));
+  LOG_DEBUG("Order Received: {} Market: {} Outcome: {} Price: {} Size: {} Side: {}", order.id,
+            order.market_id, (order.outcome == Outcome::Yes ? "YES" : "NO"), order.price,
+            order.quantity, (order.side == Side::Buy ? "BUY" : "SELL"));
 
   auto* book = get_book(order.market_id);
   if (!book) {
     LOG_WARN("No book for market {}, cannot process order", order.market_id);
-    return;
+    return std::nullopt;
   }
 
   // Check if this order can be filled immediately (ie. taker)
   if (auto fill = try_fill_taker(order)) {
-    LOG_INFO("Taker Order Filled: {} @ {} (qty: {})", fill->order_id, fill->filled_price,
-             fill->filled_quantity);
-    return;
+    LOG_DEBUG("Taker Order Filled: {} @ {} (qty: {})", fill->order_id, fill->filled_price,
+              fill->filled_quantity);
+    return fill;
   }
 
   // Not immediately fillable - add as maker order
   add_maker_order(order);
+  return std::nullopt;
 }
 
 void Exchange::cancel_order(const std::string& market_id, uint64_t order_id) {
@@ -43,7 +44,7 @@ void Exchange::cancel_order(const std::string& market_id, uint64_t order_id) {
   if (!book) return;
 
   book->remove_virtual_order(order_id);
-  LOG_INFO("Order Cancelled: {} (market: {})", order_id, market_id);
+  LOG_DEBUG("Order Cancelled: {} (market: {})", order_id, market_id);
 }
 
 std::optional<FillReport> Exchange::try_fill_taker(const Order& order) {
@@ -60,12 +61,12 @@ std::optional<FillReport> Exchange::try_fill_taker(const Order& order) {
 
       // Prefer same-outcome match, then complement match
       if (yes_ask && *yes_ask <= order.price) {
-        return FillReport{order.market_id, Outcome::Yes,   order.id,
-                          *yes_ask,        order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::Yes,    order.id,  *yes_ask,
+                          order.quantity,  order.timestamp, order.side};
       }
       if (no_bid && *no_bid >= complement) {
-        return FillReport{order.market_id, Outcome::Yes,   order.id,
-                          order.price,     order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::Yes,    order.id,  order.price,
+                          order.quantity,  order.timestamp, order.side};
       }
     } else {
       // BUY NO @ p: match with SELL NO @ p or BUY YES @ (1-p)
@@ -73,12 +74,12 @@ std::optional<FillReport> Exchange::try_fill_taker(const Order& order) {
       auto yes_bid = book->get_yes_best_bid();
 
       if (no_ask && *no_ask <= order.price) {
-        return FillReport{order.market_id, Outcome::No,    order.id,
-                          *no_ask,         order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::No,     order.id,  *no_ask,
+                          order.quantity,  order.timestamp, order.side};
       }
       if (yes_bid && *yes_bid >= complement) {
-        return FillReport{order.market_id, Outcome::No,    order.id,
-                          order.price,     order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::No,     order.id,  order.price,
+                          order.quantity,  order.timestamp, order.side};
       }
     }
   } else {
@@ -88,12 +89,12 @@ std::optional<FillReport> Exchange::try_fill_taker(const Order& order) {
       auto no_ask = book->get_no_best_ask();
 
       if (yes_bid && *yes_bid >= order.price) {
-        return FillReport{order.market_id, Outcome::Yes,   order.id,
-                          *yes_bid,        order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::Yes,    order.id,  *yes_bid,
+                          order.quantity,  order.timestamp, order.side};
       }
       if (no_ask && *no_ask <= complement) {
-        return FillReport{order.market_id, Outcome::Yes,   order.id,
-                          order.price,     order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::Yes,    order.id,  order.price,
+                          order.quantity,  order.timestamp, order.side};
       }
     } else {
       // SELL NO @ p: match with BUY NO @ p or SELL YES @ (1-p)
@@ -101,12 +102,12 @@ std::optional<FillReport> Exchange::try_fill_taker(const Order& order) {
       auto yes_ask = book->get_yes_best_ask();
 
       if (no_bid && *no_bid >= order.price) {
-        return FillReport{order.market_id, Outcome::No,    order.id,
-                          *no_bid,         order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::No,     order.id,  *no_bid,
+                          order.quantity,  order.timestamp, order.side};
       }
       if (yes_ask && *yes_ask <= complement) {
-        return FillReport{order.market_id, Outcome::No,    order.id,
-                          order.price,     order.quantity, order.timestamp};
+        return FillReport{order.market_id, Outcome::No,     order.id,  order.price,
+                          order.quantity,  order.timestamp, order.side};
       }
     }
   }
@@ -144,8 +145,8 @@ void Exchange::add_maker_order(const Order& order) {
 
   book->add_virtual_order(virtual_order);
 
-  LOG_INFO("Maker Order Queued: {} @ {} (outcome: {}, volume_ahead: {})", order.id, order.price,
-           (order.outcome == Outcome::Yes ? "YES" : "NO"), volume_ahead);
+  LOG_DEBUG("Maker Order Queued: {} @ {} (outcome: {}, volume_ahead: {})", order.id, order.price,
+            (order.outcome == Outcome::Yes ? "YES" : "NO"), volume_ahead);
 }
 
 std::vector<FillReport> Exchange::process_trade(const LastTradeMessage& trade) {
@@ -205,11 +206,11 @@ std::vector<FillReport> Exchange::process_virtual_fills(const std::string& marke
       order.volume_ahead -= trade_size;
 
       if (order.volume_ahead <= 0) {
-        fills.push_back(
-            {market_id, order.outcome, order.id, order.price, order.quantity, timestamp});
+        fills.push_back({market_id, order.outcome, order.id, order.price, order.quantity, timestamp,
+                         order.side});
         to_remove.push_back(order.id);
-        LOG_INFO("Virtual Order Filled: {} @ {} (outcome: {}, qty: {})", order.id, order.price,
-                 (order.outcome == Outcome::Yes ? "YES" : "NO"), order.quantity);
+        LOG_DEBUG("Virtual Order Filled: {} @ {} (outcome: {}, qty: {})", order.id, order.price,
+                  (order.outcome == Outcome::Yes ? "YES" : "NO"), order.quantity);
       } else {
         LOG_DEBUG("Virtual Order {} queue update: volume_ahead now {}", order.id,
                   order.volume_ahead);

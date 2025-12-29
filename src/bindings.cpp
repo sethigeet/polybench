@@ -81,7 +81,8 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("outcome", &FillReport::outcome)
       .def_readonly("order_id", &FillReport::order_id)
       .def_readonly("filled_price", &FillReport::filled_price)
-      .def_readonly("filled_quantity", &FillReport::filled_quantity);
+      .def_readonly("filled_quantity", &FillReport::filled_quantity)
+      .def_readonly("side", &FillReport::side);
 
   py::class_<Strategy, PyStrategy, std::shared_ptr<Strategy>>(m, "Strategy")
       .def(py::init<>())

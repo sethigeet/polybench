@@ -30,4 +30,5 @@ struct FillReport {
   double filled_price;
   double filled_quantity;
   uint64_t timestamp;
+  Side side;
 };
