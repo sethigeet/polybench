@@ -1,5 +1,8 @@
 #include "logger.hpp"
 
+#include <spdlog/cfg/helpers.h>
+#include <spdlog/details/os.h>
+#include <spdlog/details/registry.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/stdout_sinks.h>
 
@@ -14,6 +17,14 @@ bool is_fancy_enabled() {
     return false;
   }
   return true;
+}
+
+inline void load_env_levels() {
+  auto env_val = spdlog::details::os::getenv("POLYBENCH_LOG_LEVEL");
+  LOG_DEBUG("Loading env levels: {}", env_val);
+  if (!env_val.empty()) {
+    spdlog::cfg::helpers::load_levels(env_val);
+  }
 }
 
 void init() {
@@ -35,6 +46,8 @@ void init() {
       }
       l->set_level(DEFAULT_LOG_LEVEL);
     }
+
+    load_env_levels();
   });
 }
 
