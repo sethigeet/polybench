@@ -15,10 +15,11 @@ class Strategy {
  public:
   virtual ~Strategy() = default;
 
-  virtual void on_book(const BookMessage &msg) = 0;
-  virtual void on_price_change(const PriceChangeMessage &msg) = 0;
-  virtual void on_trade(const LastTradeMessage &msg) = 0;
-  virtual void on_fill(const FillReport &fill) = 0;
+  virtual void on_book(const BookMessage &msg) {};
+  virtual void on_price_change(const PriceChangeMessage &msg) {};
+  virtual void on_trade(const LastTradeMessage &msg) {};
+  virtual void on_fill(const FillReport &fill) {};
+  virtual void on_market_resolved(const MarketResolvedMessage &msg) {};
 
   void set_engine_callbacks(std::function<void(const Order &)> submit,
                             std::function<void(const std::string &, uint64_t)> cancel) {
@@ -127,5 +128,9 @@ class PyStrategy : public Strategy {
 
   void on_fill(const FillReport &fill) override {
     PYBIND11_OVERRIDE_PURE(void, Strategy, on_fill, fill);
+  }
+
+  void on_market_resolved(const MarketResolvedMessage &msg) override {
+    PYBIND11_OVERRIDE(void, Strategy, on_market_resolved, msg);
   }
 };

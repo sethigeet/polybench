@@ -18,3 +18,9 @@ class ScopeTimer {
   std::string name_;
   std::chrono::high_resolution_clock::time_point start_;
 };
+
+inline std::string to_upper(const std::string& str) {
+  std::string result = str;
+  std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+  return result;
+}

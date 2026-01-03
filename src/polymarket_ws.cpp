@@ -22,7 +22,7 @@ PolymarketWS::PolymarketWS(const WsConfig& config) : config_(config) {
         LOG_INFO("Connected to {}", config_.url);
         connected_ = true;
 
-        send_subscription();
+        send_subscription(current_subscriptions_);
 
         {
           std::lock_guard<std::mutex> lock(callback_mutex_);
@@ -122,21 +122,54 @@ void PolymarketWS::subscribe(const std::vector<std::string>& asset_ids) {
   }
 
   if (connected_) {
-    send_subscription();
+    send_subscription(asset_ids);
   }
 }
 
-void PolymarketWS::send_subscription() {
+void PolymarketWS::unsubscribe(const std::vector<std::string>& asset_ids) {
+  {
+    std::lock_guard<std::mutex> lock(subscription_mutex_);
+    for (const auto& id : asset_ids) {
+      auto it = std::find(current_subscriptions_.begin(), current_subscriptions_.end(), id);
+      if (it == current_subscriptions_.end()) {
+        LOG_WARN("Asset {} not found in current subscriptions", id);
+        continue;
+      }
+      current_subscriptions_.erase(it);
+    }
+  }
+
+  if (connected_) {
+    send_unsubscription(asset_ids);
+  }
+}
+
+void PolymarketWS::send_subscription(const std::vector<std::string>& asset_ids) {
   nlohmann::json sub_msg;
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
-    sub_msg["assets_ids"] = current_subscriptions_;
+    sub_msg["assets_ids"] = asset_ids;
   }
   sub_msg["type"] = "market";
+  sub_msg["operation"] = "subscribe";
+  sub_msg["custom_feature_enabled"] = true;
 
   std::string msg = sub_msg.dump();
-  LOG_INFO("Sending subscription for {} assets", current_subscriptions_.size());
+  LOG_INFO("Sending subscription for {} assets", asset_ids.size());
   LOG_DEBUG("Subscription message: {}", msg);
+
+  ws_.send(msg);
+}
+
+void PolymarketWS::send_unsubscription(const std::vector<std::string>& asset_ids) {
+  nlohmann::json unsub_msg;
+  unsub_msg["assets_ids"] = asset_ids;
+  unsub_msg["type"] = "market";
+  unsub_msg["operation"] = "unsubscribe";
+
+  std::string msg = unsub_msg.dump();
+  LOG_INFO("Sending unsubscription for {} assets", asset_ids.size());
+  LOG_DEBUG("Unsubscription message: {}", msg);
 
   ws_.send(msg);
 }

@@ -2,6 +2,8 @@
 
 #include <cctype>
 
+#include "utils.hpp"
+
 #define LOGGER_NAME "JsonParser"
 #include "logger.hpp"
 
@@ -34,6 +36,8 @@ std::vector<PolymarketMessage> JsonParser::parse(const std::string& json_str) {
       return {parse_last_trade_message(j)};
     } else if (event_type == "tick_size_change") {
       return {parse_tick_size_change_message(j)};
+    } else if (event_type == "market_resolved") {
+      return {parse_market_resolved_message(j)};
     } else {
       LOG_WARN("Unknown event type: {}", event_type);
       return {};
@@ -117,6 +121,28 @@ TickSizeChangeMessage JsonParser::parse_tick_size_change_message(const nlohmann:
   return msg;
 }
 
+MarketResolvedMessage JsonParser::parse_market_resolved_message(const nlohmann::json& j) {
+  MarketResolvedMessage msg;
+  msg.market = j["market"].get<std::string>();
+  msg.winning_asset_id = j["winning_asset_id"].get<std::string>();
+  msg.winning_outcome = parse_outcome(j["winning_outcome"].get<std::string>());
+  msg.timestamp = parse_timestamp(j["timestamp"]);
+
+  if (j.contains("assets_ids") && j["assets_ids"].is_array()) {
+    for (const auto& id : j["assets_ids"]) {
+      msg.asset_ids.push_back(id.get<std::string>());
+    }
+  }
+
+  if (j.contains("outcomes") && j["outcomes"].is_array()) {
+    for (const auto& outcome : j["outcomes"]) {
+      msg.outcomes.push_back(parse_outcome(outcome.get<std::string>()));
+    }
+  }
+
+  return msg;
+}
+
 int JsonParser::parse_int(const nlohmann::json& j) {
   if (j.is_string()) {
     try {
@@ -167,5 +193,16 @@ Side JsonParser::parse_side(const std::string& side_str) {
   } else {
     LOG_ERROR("Unknown side: {}", side_str);
     return Side::Sell;
+  }
+}
+
+Outcome JsonParser::parse_outcome(const std::string& outcome_str) {
+  if (to_upper(outcome_str) == "YES" || to_upper(outcome_str) == "UP") {
+    return Outcome::Yes;
+  } else if (to_upper(outcome_str) == "NO" || to_upper(outcome_str) == "DOWN") {
+    return Outcome::No;
+  } else {
+    LOG_ERROR("Unknown outcome: {}", outcome_str);
+    return Outcome::No;
   }
 }

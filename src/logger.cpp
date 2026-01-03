@@ -30,14 +30,13 @@ void init() {
   static std::once_flag once;
   std::call_once(once, [] {
     bool fancy = is_fancy_enabled();
-    auto names = {"Engine", "Exchange", "Python", "System", "WebSocket", "JsonParser"};
+    std::array names = {"Engine", "Exchange", "Python", "System", "WebSocket", "JsonParser"};
 
     for (const std::string& name : names) {
       std::shared_ptr<spdlog::logger> l;
 
       if (fancy) {
         l = spdlog::stdout_color_mt(name);
-        // Reverting to the very simple format: [Name] [Time] [Level] Message
         l->set_pattern("[%n] [%H:%M:%S.%e] [%^%l%$] %v");
       } else {
         l = spdlog::stdout_logger_mt(name);

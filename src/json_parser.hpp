@@ -7,8 +7,8 @@
 
 #include "types/polymarket.hpp"
 
-using PolymarketMessage =
-    std::variant<BookMessage, PriceChangeMessage, LastTradeMessage, TickSizeChangeMessage>;
+using PolymarketMessage = std::variant<BookMessage, PriceChangeMessage, LastTradeMessage,
+                                       TickSizeChangeMessage, MarketResolvedMessage>;
 
 class JsonParser {
  public:
@@ -18,10 +18,12 @@ class JsonParser {
   static PriceChangeMessage parse_price_change_message(const nlohmann::json& j);
   static LastTradeMessage parse_last_trade_message(const nlohmann::json& j);
   static TickSizeChangeMessage parse_tick_size_change_message(const nlohmann::json& j);
+  static MarketResolvedMessage parse_market_resolved_message(const nlohmann::json& j);
 
  private:
   static int parse_int(const nlohmann::json& j);
   static double parse_double(const nlohmann::json& j);
   static uint64_t parse_timestamp(const nlohmann::json& j);
   static Side parse_side(const std::string& side_str);
+  static Outcome parse_outcome(const std::string& outcome_str);
 };

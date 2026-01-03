@@ -25,12 +25,14 @@ Engine::Engine(std::shared_ptr<Strategy> strategy, const EngineConfig& config)
   strategy_->set_books(&books_);
   exchange_.set_books(&books_);
 
-  // Register asset mappings
+  // Register asset mappings and track active markets
   for (const auto& [asset_id, mapping] : config_.asset_mappings) {
     books_[mapping.market_id].register_asset(asset_id, mapping.outcome);
+    active_markets_.insert(mapping.market_id);
     LOG_DEBUG("Registered asset {} as {} for market {}", asset_id,
               mapping.outcome == Outcome::Yes ? "YES" : "NO", mapping.market_id);
   }
+  LOG_INFO("Tracking {} active markets", active_markets_.size());
 
   WsConfig ws_config;
   ws_config.url = config_.ws_url;
@@ -94,6 +96,8 @@ void Engine::process_message(const PolymarketMessage& msg) {
           process_trade_message(message);
         } else if constexpr (std::is_same_v<T, TickSizeChangeMessage>) {
           process_tick_size_change_message(message);
+        } else if constexpr (std::is_same_v<T, MarketResolvedMessage>) {
+          process_market_resolved_message(message);
         }
       },
       msg);
@@ -152,6 +156,27 @@ void Engine::process_tick_size_change_message(const TickSizeChangeMessage& msg) 
            msg.old_tick_size, msg.new_tick_size);
 
   // NOTHING TO DO HERE
+}
+
+void Engine::process_market_resolved_message(const MarketResolvedMessage& msg) {
+  LOG_INFO("Market resolved: {}", msg.market);
+  LOG_INFO("  Winning outcome: {} (asset: {})", msg.winning_outcome == Outcome::Yes ? "UP" : "DOWN",
+           msg.winning_asset_id);
+
+  strategy_->on_market_resolved(msg);
+
+  if (!msg.asset_ids.empty()) {
+    LOG_INFO("Unsubscribing from {} assets for resolved market", msg.asset_ids.size());
+    ws_->unsubscribe(msg.asset_ids);
+  }
+
+  active_markets_.erase(msg.market);
+  if (active_markets_.empty()) {
+    LOG_INFO("All markets resolved - stopping simulation");
+    stop();
+  } else {
+    LOG_INFO("Remaining active markets: {}", active_markets_.size());
+  }
 }
 
 void Engine::update_mtm(const std::string& market_id, const std::string& asset_id) {

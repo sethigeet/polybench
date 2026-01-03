@@ -59,3 +59,14 @@ struct TickSizeChangeMessage {
   double new_tick_size;
   uint64_t timestamp;
 };
+
+// market_resolved message
+// Emitted when a market is resolved
+struct MarketResolvedMessage {
+  std::string market;
+  std::string winning_asset_id;
+  Outcome winning_outcome;
+  std::vector<std::string> asset_ids;
+  std::vector<Outcome> outcomes;
+  uint64_t timestamp;
+};

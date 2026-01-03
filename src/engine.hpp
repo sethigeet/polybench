@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "exchange.hpp"
@@ -36,12 +37,14 @@ class Engine {
   void process_price_change_message(const PriceChangeMessage& msg);
   void process_trade_message(const LastTradeMessage& msg);
   void process_tick_size_change_message(const TickSizeChangeMessage& msg);
+  void process_market_resolved_message(const MarketResolvedMessage& msg);
   void update_mtm(const std::string& market_id, const std::string& asset_id);
   void print_portfolio_summary();
 
   EngineConfig config_;
   std::shared_ptr<Strategy> strategy_;
   std::unordered_map<std::string, MarketBook> books_;
+  std::unordered_set<std::string> active_markets_;
   Exchange exchange_;
   PortfolioTracker portfolio_;
   std::unique_ptr<PolymarketWS> ws_;

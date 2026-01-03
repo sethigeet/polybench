@@ -56,6 +56,13 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("fee_rate_bps", &LastTradeMessage::fee_rate_bps)
       .def_readonly("timestamp", &LastTradeMessage::timestamp);
 
+  py::class_<MarketResolvedMessage>(m, "MarketResolvedMessage")
+      .def_readonly("market", &MarketResolvedMessage::market)
+      .def_readonly("winning_asset_id", &MarketResolvedMessage::winning_asset_id)
+      .def_readonly("winning_outcome", &MarketResolvedMessage::winning_outcome)
+      .def_readonly("asset_ids", &MarketResolvedMessage::asset_ids)
+      .def_readonly("timestamp", &MarketResolvedMessage::timestamp);
+
   py::class_<OrderRequest>(m, "OrderRequest")
       .def(py::init<std::string, Outcome, double, double, Side>(), py::arg("market_id"),
            py::arg("outcome"), py::arg("price"), py::arg("quantity"), py::arg("side"))
@@ -88,6 +95,7 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def("on_price_change", &Strategy::on_price_change)
       .def("on_trade", &Strategy::on_trade)
       .def("on_fill", &Strategy::on_fill)
+      .def("on_market_resolved", &Strategy::on_market_resolved)
       .def("submit_order", &Strategy::submit_order, py::arg("request"),
            "Submit an order using OrderRequest. Returns the auto-generated order ID.")
       .def("cancel_order", &Strategy::cancel_order, py::arg("market_id"), py::arg("order_id"),

@@ -46,9 +46,11 @@ class PolymarketWS {
   std::vector<PolymarketMessage> poll_messages(size_t max_messages = 0);
 
   void subscribe(const std::vector<std::string>& asset_ids);
+  void unsubscribe(const std::vector<std::string>& asset_ids);
 
  private:
-  void send_subscription();
+  void send_subscription(const std::vector<std::string>& asset_ids);
+  void send_unsubscription(const std::vector<std::string>& asset_ids);
   void handle_message(const std::string& message);
 
   WsConfig config_;
