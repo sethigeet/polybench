@@ -1,6 +1,7 @@
 BUILD_DIR = build
 BUILD_TYPE ?= Debug
 EXECUTABLE = polybench
+RUN_CONFIG ?= config.example.json
 
 .PHONY: all configure build run clean
 
@@ -13,7 +14,7 @@ build: configure
 	cmake --build $(BUILD_DIR)
 
 run: build
-	./$(BUILD_DIR)/$(EXECUTABLE)
+	./$(BUILD_DIR)/$(EXECUTABLE) --config $(RUN_CONFIG)
 
 clean:
 	rm -rf $(BUILD_DIR)

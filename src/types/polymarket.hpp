@@ -18,7 +18,6 @@ struct BookMessage {
   std::vector<OrderSummary> bids;
   std::vector<OrderSummary> asks;
   uint64_t timestamp;
-  std::string hash;
 };
 
 // Single price change within a price_change message
@@ -27,7 +26,6 @@ struct PriceChange {
   double price;
   double size;  // New total size at this price level
   Side side;
-  std::string hash;
   double best_bid;
   double best_ask;
 };

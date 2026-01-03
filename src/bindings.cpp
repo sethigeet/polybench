@@ -32,15 +32,13 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("market", &BookMessage::market)
       .def_readonly("bids", &BookMessage::bids)
       .def_readonly("asks", &BookMessage::asks)
-      .def_readonly("timestamp", &BookMessage::timestamp)
-      .def_readonly("hash", &BookMessage::hash);
+      .def_readonly("timestamp", &BookMessage::timestamp);
 
   py::class_<PriceChange>(m, "PriceChange")
       .def_readonly("asset_id", &PriceChange::asset_id)
       .def_readonly("price", &PriceChange::price)
       .def_readonly("size", &PriceChange::size)
       .def_readonly("side", &PriceChange::side)
-      .def_readonly("hash", &PriceChange::hash)
       .def_readonly("best_bid", &PriceChange::best_bid)
       .def_readonly("best_ask", &PriceChange::best_ask);
 

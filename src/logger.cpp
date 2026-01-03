@@ -10,7 +10,6 @@
 #include <mutex>
 
 namespace logger {
-
 bool is_fancy_enabled() {
   const char* env = std::getenv("POLYBENCH_PLAIN_LOGS");
   if (env && std::string(env) == "1") {
@@ -31,7 +30,7 @@ void init() {
   static std::once_flag once;
   std::call_once(once, [] {
     bool fancy = is_fancy_enabled();
-    auto names = {"Engine", "Exchange", "Python", "System"};
+    auto names = {"Engine", "Exchange", "Python", "System", "WebSocket", "JsonParser"};
 
     for (const std::string& name : names) {
       std::shared_ptr<spdlog::logger> l;

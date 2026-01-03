@@ -1,13 +1,51 @@
 #include <pybind11/embed.h>
+#include <signal.h>
 
+#include "config.hpp"
 #include "engine.hpp"
 #include "logger.hpp"
 
 namespace py = pybind11;
 
-int main() {
+static Engine* g_engine = nullptr;
+
+void signal_handler(int signum) {
+  if (signum == SIGINT || signum == SIGTERM) {
+    LOG_INFO("Received shutdown signal ({})", signum);
+
+    // Reset handlers to default for subsequent signals
+    signal(SIGINT, SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
+
+    if (g_engine) {
+      g_engine->stop();
+    }
+  }
+}
+
+int main(int argc, char* argv[]) {
   logger::init();
   LOG_INFO("Initializing PolyBench...");
+
+  signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler);
+
+  EngineConfig config;
+  try {
+    config = ConfigLoader::load_from_args(argc, argv);
+  } catch (const std::exception& e) {
+    LOG_ERROR("Failed to load configuration: {}", e.what());
+    ConfigLoader::print_usage();
+    return 1;
+  }
+
+  if (config.asset_ids.empty()) {
+    LOG_ERROR("No assets configured. Use --config or --asset to specify assets to subscribe to.");
+    ConfigLoader::print_usage();
+    return 1;
+  }
+
+  LOG_INFO("Configuration loaded: {} assets to subscribe", config.asset_ids.size());
 
   // Load and initialize Python Interpreter once
   py::scoped_interpreter guard{};
@@ -28,15 +66,22 @@ int main() {
     // exists so we can cast it to a C++ Strategy shared_ptr
     auto strategy = py_strat_obj.cast<std::shared_ptr<Strategy>>();
 
-    Engine engine(strategy);
+    Engine engine(strategy, config);
+    g_engine = &engine;
+
+    LOG_INFO("Starting engine with live Polymarket data...");
     engine.run();
-  } catch (py::error_already_set &e) {
+
+    g_engine = nullptr;
+  } catch (py::error_already_set& e) {
     spdlog::get("Python")->error("Python Error: {}", e.what());
     return 1;
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     LOG_ERROR("Critical Error: {}", e.what());
     return 1;
   }
+
+  LOG_INFO("PolyBench shutdown complete.");
 
   return 0;
 }
