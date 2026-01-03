@@ -1,0 +1,15 @@
+{
+  "ws_url": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+  "assets": [
+    {
+      "asset_id": "9071927158124339648289279313460688740570529269718301269592153198706548693611",
+      "market_id": "0xbe8c84ec261ad26b70f59e5265b455a5984da87e2ba4cf6db915c7af3e5df074",
+      "outcome": "YES"
+    },
+    {
+      "asset_id": "81851105050096936294426449360385164939794240850789795482073737383857420012676",
+      "market_id": "0xbe8c84ec261ad26b70f59e5265b455a5984da87e2ba4cf6db915c7af3e5df074",
+      "outcome": "NO"
+    }
+  ]
+}
