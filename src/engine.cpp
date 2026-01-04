@@ -163,6 +163,13 @@ void Engine::process_market_resolved_message(const MarketResolvedMessage& msg) {
   LOG_INFO("  Winning outcome: {} (asset: {})", msg.winning_outcome == Outcome::Yes ? "UP" : "DOWN",
            msg.winning_asset_id);
 
+  if (msg.winning_outcome == Outcome::Yes) {
+    portfolio_.update_mark_to_market(msg.market, Outcome::Yes, 1.0);
+    portfolio_.update_mark_to_market(msg.market, Outcome::No, 0.0);
+  } else {
+    portfolio_.update_mark_to_market(msg.market, Outcome::Yes, 0.0);
+    portfolio_.update_mark_to_market(msg.market, Outcome::No, 1.0);
+  }
   strategy_->on_market_resolved(msg);
 
   if (!msg.asset_ids.empty()) {
