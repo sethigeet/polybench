@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -21,9 +22,10 @@ class JsonParser {
   static MarketResolvedMessage parse_market_resolved_message(const nlohmann::json& j);
 
  private:
+  static std::optional<PolymarketMessage> parse_object(const nlohmann::json& j);
   static int parse_int(const nlohmann::json& j);
   static double parse_double(const nlohmann::json& j);
   static uint64_t parse_timestamp(const nlohmann::json& j);
-  static Side parse_side(const std::string& side_str);
-  static Outcome parse_outcome(const std::string& outcome_str);
+  static Side parse_side(const nlohmann::json& j);
+  static Outcome parse_outcome(const nlohmann::json& j);
 };

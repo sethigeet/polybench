@@ -1,54 +1,61 @@
 #include "json_parser.hpp"
 
-#include <cctype>
-
-#include "utils.hpp"
+#include <charconv>
+#include <cstring>
 
 #define LOGGER_NAME "JsonParser"
 #include "logger.hpp"
 
 std::vector<PolymarketMessage> JsonParser::parse(const std::string& json_str) {
-  try {
-    auto j = nlohmann::json::parse(json_str);
-    if (j.is_array()) {
-      std::vector<PolymarketMessage> messages;
-      for (const auto& item : j) {
-        auto parsed = parse(item.dump());
-        if (parsed.size() > 0) {
-          messages.insert(messages.end(), parsed.begin(), parsed.end());
-        }
-      }
-      return messages;
-    }
-
-    if (!j.contains("event_type")) {
-      LOG_WARN("No event type found");
-      return {};
-    }
-
-    std::string event_type = j["event_type"].get<std::string>();
-
-    if (event_type == "book") {
-      return {parse_book_message(j)};
-    } else if (event_type == "price_change") {
-      return {parse_price_change_message(j)};
-    } else if (event_type == "last_trade_price") {
-      return {parse_last_trade_message(j)};
-    } else if (event_type == "tick_size_change") {
-      return {parse_tick_size_change_message(j)};
-    } else if (event_type == "market_resolved") {
-      return {parse_market_resolved_message(j)};
-    } else if (event_type == "market_created") {
-      return {};
-    } else if (event_type == "best_bid_ask") {
-      return {};
-    } else {
-      LOG_WARN("Unknown event type: {}", event_type);
-      return {};
-    }
-  } catch (const std::exception& e) {
-    LOG_ERROR("Failed to parse message: {}", e.what());
+  nlohmann::json j;
+  // Use accept() for validation + parse, avoiding exception on malformed JSON
+  if (!nlohmann::json::accept(json_str)) {
+    LOG_ERROR("Failed to parse message: invalid JSON");
     return {};
+  }
+  j = nlohmann::json::parse(json_str, nullptr, false, true);
+
+  if (j.is_array()) {
+    std::vector<PolymarketMessage> messages;
+    messages.reserve(j.size());
+    for (const auto& item : j) {
+      if (auto msg = parse_object(item); msg.has_value()) {
+        messages.push_back(std::move(*msg));
+      }
+    }
+    return messages;
+  }
+
+  if (auto msg = parse_object(j); msg.has_value()) {
+    return {std::move(*msg)};
+  }
+  return {};
+}
+
+std::optional<PolymarketMessage> JsonParser::parse_object(const nlohmann::json& j) {
+  auto it = j.find("event_type");
+  if (it == j.end() || !it->is_string()) {
+    LOG_WARN("No event type found");
+    return std::nullopt;
+  }
+
+  const auto& event_type = it->get_ref<const std::string&>();
+
+  if (event_type == "book") {
+    return parse_book_message(j);
+  } else if (event_type == "price_change") {
+    return parse_price_change_message(j);
+  } else if (event_type == "last_trade_price") {
+    return parse_last_trade_message(j);
+  } else if (event_type == "tick_size_change") {
+    return parse_tick_size_change_message(j);
+  } else if (event_type == "market_resolved") {
+    return parse_market_resolved_message(j);
+  } else if (event_type == "market_created" || event_type == "best_bid_ask") {
+    return std::nullopt;
+  } else {
+    LOG_WARN("Unknown event type: {}", event_type);
+    return std::nullopt;
   }
 }
 
@@ -58,7 +65,6 @@ BookMessage JsonParser::parse_book_message(const nlohmann::json& j) {
   msg.market = j["market"].get<std::string>();
   msg.timestamp = parse_timestamp(j["timestamp"]);
 
-  // Parse bids
   if (j.contains("bids") && j["bids"].is_array()) {
     for (const auto& bid : j["bids"]) {
       OrderSummary order;
@@ -68,7 +74,6 @@ BookMessage JsonParser::parse_book_message(const nlohmann::json& j) {
     }
   }
 
-  // Parse asks
   if (j.contains("asks") && j["asks"].is_array()) {
     for (const auto& ask : j["asks"]) {
       OrderSummary order;
@@ -86,14 +91,14 @@ PriceChangeMessage JsonParser::parse_price_change_message(const nlohmann::json& 
   msg.market = j["market"].get<std::string>();
   msg.timestamp = parse_timestamp(j["timestamp"]);
 
-  // Parse price_changes array
-  if (j.contains("price_changes") && j["price_changes"].is_array()) {
-    for (const auto& pc : j["price_changes"]) {
+  auto price_changes = j.find("price_changes");
+  if (price_changes != j.end() && price_changes->is_array()) {
+    for (const auto& pc : *price_changes) {
       PriceChange change;
       change.asset_id = pc["asset_id"].get<std::string>();
       change.price = parse_double(pc["price"]);
       change.size = parse_double(pc["size"]);
-      change.side = parse_side(pc["side"].get<std::string>());
+      change.side = parse_side(pc["side"]);
       change.best_bid = parse_double(pc["best_bid"]);
       change.best_ask = parse_double(pc["best_ask"]);
       msg.price_changes.push_back(change);
@@ -108,7 +113,7 @@ LastTradeMessage JsonParser::parse_last_trade_message(const nlohmann::json& j) {
   msg.asset_id = j["asset_id"].get<std::string>();
   msg.market = j["market"].get<std::string>();
   msg.price = parse_double(j["price"]);
-  msg.side = parse_side(j["side"].get<std::string>());
+  msg.side = parse_side(j["side"]);
   msg.size = parse_double(j["size"]);
   msg.fee_rate_bps = parse_int(j["fee_rate_bps"]);
   msg.timestamp = parse_timestamp(j["timestamp"]);
@@ -129,7 +134,7 @@ MarketResolvedMessage JsonParser::parse_market_resolved_message(const nlohmann::
   MarketResolvedMessage msg;
   msg.market = j["market"].get<std::string>();
   msg.winning_asset_id = j["winning_asset_id"].get<std::string>();
-  msg.winning_outcome = parse_outcome(j["winning_outcome"].get<std::string>());
+  msg.winning_outcome = parse_outcome(j["winning_outcome"]);
   msg.timestamp = parse_timestamp(j["timestamp"]);
 
   if (j.contains("assets_ids") && j["assets_ids"].is_array()) {
@@ -140,7 +145,7 @@ MarketResolvedMessage JsonParser::parse_market_resolved_message(const nlohmann::
 
   if (j.contains("outcomes") && j["outcomes"].is_array()) {
     for (const auto& outcome : j["outcomes"]) {
-      msg.outcomes.push_back(parse_outcome(outcome.get<std::string>()));
+      msg.outcomes.push_back(parse_outcome(outcome));
     }
   }
 
@@ -149,12 +154,14 @@ MarketResolvedMessage JsonParser::parse_market_resolved_message(const nlohmann::
 
 int JsonParser::parse_int(const nlohmann::json& j) {
   if (j.is_string()) {
-    try {
-      return std::stoi(j.get<std::string>());
-    } catch (...) {
-      LOG_ERROR("Failed to parse int from string: {}", j.get<std::string>());
+    const auto& str = j.get_ref<const std::string&>();
+    int value = 0;
+    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+    if (ec != std::errc{}) {
+      LOG_ERROR("Failed to parse int from string: {}", str);
       return 0;
     }
+    return value;
   } else if (j.is_number()) {
     return j.get<int>();
   }
@@ -163,12 +170,14 @@ int JsonParser::parse_int(const nlohmann::json& j) {
 
 double JsonParser::parse_double(const nlohmann::json& j) {
   if (j.is_string()) {
-    try {
-      return std::stod(j.get<std::string>());
-    } catch (...) {
-      LOG_ERROR("Failed to parse double from string: {}", j.get<std::string>());
+    const auto& str = j.get_ref<const std::string&>();
+    double value = 0.0;
+    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+    if (ec != std::errc{}) {
+      LOG_ERROR("Failed to parse double from string: {}", str);
       return 0.0;
     }
+    return value;
   } else if (j.is_number()) {
     return j.get<double>();
   }
@@ -177,36 +186,38 @@ double JsonParser::parse_double(const nlohmann::json& j) {
 
 uint64_t JsonParser::parse_timestamp(const nlohmann::json& j) {
   if (j.is_string()) {
-    try {
-      return std::stoull(j.get<std::string>());
-    } catch (...) {
-      LOG_ERROR("Failed to parse timestamp from string: {}", j.get<std::string>());
+    const auto& str = j.get_ref<const std::string&>();
+    uint64_t value = 0;
+    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+    if (ec != std::errc{}) {
+      LOG_ERROR("Failed to parse timestamp from string: {}", str);
       return 0;
     }
+    return value;
   } else if (j.is_number()) {
     return j.get<uint64_t>();
   }
   return 0;
 }
 
-Side JsonParser::parse_side(const std::string& side_str) {
-  if (side_str == "BUY" || side_str == "buy" || side_str == "Buy") {
-    return Side::Buy;
-  } else if (side_str == "SELL" || side_str == "sell" || side_str == "Sell") {
-    return Side::Sell;
-  } else {
-    LOG_ERROR("Unknown side: {}", side_str);
-    return Side::Sell;
+Side JsonParser::parse_side(const nlohmann::json& j) {
+  const auto& side_str = j.get_ref<const std::string&>();
+  if (!side_str.empty()) {
+    char first = side_str[0] | 0x20;  // lowercase via bitmask
+    if (first == 'b') return Side::Buy;
+    if (first == 's') return Side::Sell;
   }
+  LOG_ERROR("Unknown side: {}", side_str);
+  return Side::Sell;
 }
 
-Outcome JsonParser::parse_outcome(const std::string& outcome_str) {
-  if (to_upper(outcome_str) == "YES" || to_upper(outcome_str) == "UP") {
-    return Outcome::Yes;
-  } else if (to_upper(outcome_str) == "NO" || to_upper(outcome_str) == "DOWN") {
-    return Outcome::No;
-  } else {
-    LOG_ERROR("Unknown outcome: {}", outcome_str);
-    return Outcome::No;
+Outcome JsonParser::parse_outcome(const nlohmann::json& j) {
+  const auto& outcome_str = j.get_ref<const std::string&>();
+  if (!outcome_str.empty()) {
+    char first = outcome_str[0] | 0x20;  // lowercase via bitmask
+    if (first == 'y' || first == 'u') return Outcome::Yes;
+    if (first == 'n' || first == 'd') return Outcome::No;
   }
+  LOG_ERROR("Unknown outcome: {}", outcome_str);
+  return Outcome::No;
 }
