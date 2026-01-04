@@ -6,15 +6,19 @@
 
 import json
 import sys
+import time
 
 import requests
 
 if len(sys.argv) < 2:
-    print("Usage: python generate_config_for_15m.py <slug>")
+    print("Usage: python generate_config_for_15m.py <coin>")
     sys.exit(1)
 
 BASE_URL = "https://gamma-api.polymarket.com/markets/slug"
-SLUG = sys.argv[1]
+COIN = sys.argv[1]
+now = int(time.time())
+TIME = now - (now % (15 * 60))
+SLUG = f"{COIN}-updown-15m-{TIME}"
 
 response = requests.get(f"{BASE_URL}/{SLUG}")
 market = response.json()
