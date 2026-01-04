@@ -11,7 +11,7 @@ configure:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
 build: configure
-	cmake --build $(BUILD_DIR)
+	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
 
 run: build
 	./$(BUILD_DIR)/$(EXECUTABLE) --config $(RUN_CONFIG)

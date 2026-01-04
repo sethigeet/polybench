@@ -1,6 +1,6 @@
 #include "polymarket_ws.hpp"
 
-#include <nlohmann/json.hpp>
+#include <simdjson.h>
 
 #define LOGGER_NAME "WebSocket"
 #include "logger.hpp"
@@ -22,7 +22,7 @@ PolymarketWS::PolymarketWS(const WsConfig& config) : config_(config) {
         LOG_INFO("Connected to {}", config_.url);
         connected_ = true;
 
-        send_subscription({current_subscriptions_.begin(), current_subscriptions_.end()});
+        send_subscription(current_subscriptions_, ws_);
 
         {
           std::lock_guard<std::mutex> lock(callback_mutex_);
@@ -110,6 +110,26 @@ void PolymarketWS::stop() {
 
 bool PolymarketWS::is_connected() const { return connected_; }
 
+template <std::ranges::range R>
+void send_subscription(const R& asset_ids, ix::WebSocket& ws) {
+  simdjson::builder::string_builder sb;
+  sb.start_object();
+  sb.append_key_value<"assets_ids">(asset_ids);
+  sb.append_comma();
+  sb.append_key_value<"type">("market");
+  sb.append_comma();
+  sb.append_key_value<"operation">("subscribe");
+  sb.append_comma();
+  sb.append_key_value<"custom_feature_enabled">(true);
+  sb.end_object();
+
+  std::string_view msg = sb;
+  LOG_INFO("Sending subscription for {} assets", asset_ids.size());
+  LOG_DEBUG("Subscription message: {}", msg);
+
+  ws.send(std::string(msg));
+}
+
 void PolymarketWS::subscribe(const std::vector<std::string>& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
@@ -119,8 +139,26 @@ void PolymarketWS::subscribe(const std::vector<std::string>& asset_ids) {
   }
 
   if (connected_) {
-    send_subscription(asset_ids);
+    send_subscription(asset_ids, ws_);
   }
+}
+
+template <std::ranges::range R>
+void send_unsubscription(const R& asset_ids, ix::WebSocket& ws) {
+  simdjson::builder::string_builder sb;
+  sb.start_object();
+  sb.append_key_value<"assets_ids">(asset_ids);
+  sb.append_comma();
+  sb.append_key_value<"type">("market");
+  sb.append_comma();
+  sb.append_key_value<"operation">("unsubscribe");
+  sb.end_object();
+
+  std::string_view msg = sb;
+  LOG_INFO("Sending unsubscription for {} assets", asset_ids.size());
+  LOG_DEBUG("Unsubscription message: {}", msg);
+
+  ws.send(std::string(msg));
 }
 
 void PolymarketWS::unsubscribe(const std::vector<std::string>& asset_ids) {
@@ -134,44 +172,14 @@ void PolymarketWS::unsubscribe(const std::vector<std::string>& asset_ids) {
   }
 
   if (connected_) {
-    send_unsubscription(asset_ids);
+    send_unsubscription(asset_ids, ws_);
   }
-}
-
-void PolymarketWS::send_subscription(const std::vector<std::string>& asset_ids) {
-  nlohmann::json sub_msg;
-  {
-    std::lock_guard<std::mutex> lock(subscription_mutex_);
-    sub_msg["assets_ids"] = asset_ids;
-  }
-  sub_msg["type"] = "market";
-  sub_msg["operation"] = "subscribe";
-  sub_msg["custom_feature_enabled"] = true;
-
-  std::string msg = sub_msg.dump();
-  LOG_INFO("Sending subscription for {} assets", asset_ids.size());
-  LOG_DEBUG("Subscription message: {}", msg);
-
-  ws_.send(msg);
-}
-
-void PolymarketWS::send_unsubscription(const std::vector<std::string>& asset_ids) {
-  nlohmann::json unsub_msg;
-  unsub_msg["assets_ids"] = asset_ids;
-  unsub_msg["type"] = "market";
-  unsub_msg["operation"] = "unsubscribe";
-
-  std::string msg = unsub_msg.dump();
-  LOG_INFO("Sending unsubscription for {} assets", asset_ids.size());
-  LOG_DEBUG("Unsubscription message: {}", msg);
-
-  ws_.send(msg);
 }
 
 void PolymarketWS::handle_message(const std::string& message) {
   LOG_DEBUG("Received message ({} bytes)", message.length());
 
-  auto parsed = JsonParser::parse(message);
+  auto parsed = json_parser_.parse(message);
   if (!parsed.empty()) {
     std::lock_guard<std::mutex> lock(queue_mutex_);
     for (auto& msg : parsed) {

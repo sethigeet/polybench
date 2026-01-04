@@ -25,6 +25,11 @@ using ErrorCallback = std::function<void(const std::string&)>;
 using ConnectCallback = std::function<void()>;
 using DisconnectCallback = std::function<void()>;
 
+template <std::ranges::range R>
+void send_subscription(const R& asset_ids, ix::WebSocket& ws);
+template <std::ranges::range R>
+void send_unsubscription(const R& asset_ids, ix::WebSocket& ws);
+
 class PolymarketWS {
  public:
   explicit PolymarketWS(const WsConfig& config);
@@ -50,8 +55,6 @@ class PolymarketWS {
   void unsubscribe(const std::vector<std::string>& asset_ids);
 
  private:
-  void send_subscription(const std::vector<std::string>& asset_ids);
-  void send_unsubscription(const std::vector<std::string>& asset_ids);
   void handle_message(const std::string& message);
 
   WsConfig config_;
@@ -69,4 +72,7 @@ class PolymarketWS {
   // Message queue for decoupling WS thread from processing thread
   std::queue<PolymarketMessage> message_queue_;
   std::mutex queue_mutex_;
+
+  // NOTE: simdjson parser is not thread-safe
+  JsonParser json_parser_;
 };

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <fstream>
+#include <simdjson.h>
+
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -12,20 +12,20 @@
 class ConfigLoader {
  public:
   static EngineConfig load_from_file(const std::string& filepath) {
-    std::ifstream file(filepath);
-    if (!file.is_open()) {
-      throw std::runtime_error("Failed to open config file: " + filepath);
+    simdjson::padded_string json_content;
+    auto load_result = simdjson::padded_string::load(filepath);
+    if (load_result.error()) {
+      throw std::runtime_error("Failed to read config file: " + filepath);
+    }
+    json_content = std::move(load_result.value());
+
+    auto doc_result = simdjson::ondemand::parser::get_parser().iterate(json_content);
+    if (doc_result.error()) {
+      throw std::runtime_error("Failed to parse config JSON: " +
+                               std::string(simdjson::error_message(doc_result.error())));
     }
 
-    nlohmann::json j;
-    file >> j;
-
-    return parse_json(j);
-  }
-
-  static EngineConfig load_from_string(const std::string& json_str) {
-    auto j = nlohmann::json::parse(json_str);
-    return parse_json(j);
+    return parse_json(doc_result.value());
   }
 
   static EngineConfig load_from_args(int argc, char* argv[]) {
@@ -73,23 +73,42 @@ class ConfigLoader {
   }
 
  private:
-  static EngineConfig parse_json(const nlohmann::json& j) {
+  static EngineConfig parse_json(simdjson::ondemand::document& doc) {
     EngineConfig config;
 
-    if (j.contains("ws_url")) {
-      config.ws_url = j["ws_url"].get<std::string>();
+    auto ws_url_result = doc["ws_url"].get_string();
+    if (!ws_url_result.error()) {
+      config.ws_url = std::string(ws_url_result.value());
     }
 
-    if (j.contains("assets") && j["assets"].is_array()) {
-      for (const auto& asset : j["assets"]) {
-        std::string asset_id = asset["asset_id"].get<std::string>();
-        std::string market_id = asset["market_id"].get<std::string>();
-        std::string outcome_str = asset["outcome"].get<std::string>();
-        Outcome outcome =
-            (outcome_str == "YES" || outcome_str == "yes") ? Outcome::Yes : Outcome::No;
+    doc.rewind();
 
-        config.asset_ids.push_back(asset_id);
-        config.asset_mappings[asset_id] = {market_id, outcome};
+    auto assets_result = doc["assets"].get_array();
+    if (!assets_result.error()) {
+      for (auto asset : assets_result.value()) {
+        auto asset_obj = asset.get_object();
+        if (asset_obj.error()) continue;
+
+        std::string asset_id;
+        std::string market_id;
+        Outcome outcome = Outcome::No;
+
+        for (auto field : asset_obj.value()) {
+          std::string_view key = field.unescaped_key();
+          if (key == "asset_id") {
+            asset_id = std::string(field.value().get_string().value());
+          } else if (key == "market_id") {
+            market_id = std::string(field.value().get_string().value());
+          } else if (key == "outcome") {
+            std::string_view outcome_str = field.value().get_string().value();
+            outcome = (outcome_str == "YES" || outcome_str == "yes") ? Outcome::Yes : Outcome::No;
+          }
+        }
+
+        if (!asset_id.empty()) {
+          config.asset_ids.push_back(asset_id);
+          config.asset_mappings[asset_id] = {market_id, outcome};
+        }
       }
     }
 
