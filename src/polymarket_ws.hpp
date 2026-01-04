@@ -7,6 +7,7 @@
 #include <mutex>
 #include <queue>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "json_parser.hpp"
@@ -63,7 +64,7 @@ class PolymarketWS {
 
   std::mutex callback_mutex_;
   std::mutex subscription_mutex_;
-  std::vector<std::string> current_subscriptions_;
+  std::unordered_set<std::string> current_subscriptions_;
 
   // Message queue for decoupling WS thread from processing thread
   std::queue<PolymarketMessage> message_queue_;

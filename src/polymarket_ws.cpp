@@ -6,7 +6,7 @@
 #include "logger.hpp"
 
 PolymarketWS::PolymarketWS(const WsConfig& config) : config_(config) {
-  current_subscriptions_ = config.asset_ids;
+  current_subscriptions_ = {config.asset_ids.begin(), config.asset_ids.end()};
 
   ws_.setUrl(config_.url);
   ws_.setPingInterval(config_.ping_interval_secs);
@@ -22,7 +22,7 @@ PolymarketWS::PolymarketWS(const WsConfig& config) : config_(config) {
         LOG_INFO("Connected to {}", config_.url);
         connected_ = true;
 
-        send_subscription(current_subscriptions_);
+        send_subscription({current_subscriptions_.begin(), current_subscriptions_.end()});
 
         {
           std::lock_guard<std::mutex> lock(callback_mutex_);
@@ -114,10 +114,7 @@ void PolymarketWS::subscribe(const std::vector<std::string>& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
     for (const auto& id : asset_ids) {
-      if (std::find(current_subscriptions_.begin(), current_subscriptions_.end(), id) ==
-          current_subscriptions_.end()) {
-        current_subscriptions_.push_back(id);
-      }
+      current_subscriptions_.insert(id);
     }
   }
 
@@ -130,12 +127,9 @@ void PolymarketWS::unsubscribe(const std::vector<std::string>& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
     for (const auto& id : asset_ids) {
-      auto it = std::find(current_subscriptions_.begin(), current_subscriptions_.end(), id);
-      if (it == current_subscriptions_.end()) {
+      if (current_subscriptions_.erase(id) == 0) {
         LOG_WARN("Asset {} not found in current subscriptions", id);
-        continue;
       }
-      current_subscriptions_.erase(it);
     }
   }
 
