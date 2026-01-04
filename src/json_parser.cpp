@@ -38,6 +38,10 @@ std::vector<PolymarketMessage> JsonParser::parse(const std::string& json_str) {
       return {parse_tick_size_change_message(j)};
     } else if (event_type == "market_resolved") {
       return {parse_market_resolved_message(j)};
+    } else if (event_type == "market_created") {
+      return {};
+    } else if (event_type == "best_bid_ask") {
+      return {};
     } else {
       LOG_WARN("Unknown event type: {}", event_type);
       return {};
