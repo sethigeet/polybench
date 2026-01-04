@@ -20,7 +20,7 @@ class SimpleStrategy(Strategy):
             best_bid = self.get_no_best_bid(market_id)
             best_ask = self.get_no_best_ask(market_id)
 
-        logger.info(
+        logger.debug(
             f"Book snapshot received for market {market_id[:16]}... ({outcome}). "
             f"Best Bid: {best_bid}, Best Ask: {best_ask}, "
             f"Bids: {len(msg.bids)}, Asks: {len(msg.asks)}"

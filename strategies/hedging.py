@@ -92,7 +92,7 @@ class HedgingStrategy(Strategy):
             state.ema_mid = mid if state.ema_mid is None else state.ema_mid
             self._update_volatility(state, mid)
 
-        logger.info(
+        logger.debug(
             f"Book init: {market_id[:12]}... ({outcome}) "
             f"Bid={best_bid}, Ask={best_ask}, Depth: {len(msg.bids)}x{len(msg.asks)}"
         )
