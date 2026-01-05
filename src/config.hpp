@@ -43,8 +43,8 @@ class ConfigLoader {
         std::string asset_spec = argv[++i];
         auto parts = split(asset_spec, ':');
         if (parts.size() >= 3) {
-          std::string asset_id = parts[0];
-          std::string market_id = parts[1];
+          AssetId asset_id{parts[0]};
+          MarketId market_id{parts[1]};
           Outcome outcome = (parts[2] == "YES" || parts[2] == "yes") ? Outcome::Yes : Outcome::No;
 
           config.asset_ids.push_back(asset_id);
@@ -89,16 +89,16 @@ class ConfigLoader {
         auto asset_obj = asset.get_object();
         if (asset_obj.error()) continue;
 
-        std::string asset_id;
-        std::string market_id;
+        AssetId asset_id;
+        MarketId market_id;
         Outcome outcome = Outcome::No;
 
         for (auto field : asset_obj.value()) {
           std::string_view key = field.unescaped_key();
           if (key == "asset_id") {
-            asset_id = std::string(field.value().get_string().value());
+            asset_id = field.value().get_string().value();
           } else if (key == "market_id") {
-            market_id = std::string(field.value().get_string().value());
+            market_id = field.value().get_string().value();
           } else if (key == "outcome") {
             std::string_view outcome_str = field.value().get_string().value();
             outcome = (outcome_str == "YES" || outcome_str == "yes") ? Outcome::Yes : Outcome::No;

@@ -1,12 +1,16 @@
 #pragma once
 #include <cstdint>
-#include <string>
+
+#include "fixed_string.hpp"
 
 enum class Side { Buy, Sell };
 enum class Outcome { Yes, No };
 
+using MarketId = FixedString<66>;
+using AssetId = FixedString<77>;
+
 struct OrderRequest {
-  std::string market_id;
+  MarketId market_id;
   Outcome outcome;
   double price;
   double quantity;
@@ -14,7 +18,7 @@ struct OrderRequest {
 };
 
 struct Order {
-  std::string market_id;
+  MarketId market_id;
   Outcome outcome;
   uint64_t id;
   double price;
@@ -24,7 +28,7 @@ struct Order {
 };
 
 struct FillReport {
-  std::string market_id;
+  MarketId market_id;
   Outcome outcome;
   uint64_t order_id;
   double filled_price;

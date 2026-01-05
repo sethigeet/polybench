@@ -2,7 +2,6 @@
 #include <cstdint>
 
 #include "common.hpp"
-#include "fixed_string.hpp"
 #include "small_vector.hpp"
 
 struct OrderSummary {
@@ -10,8 +9,6 @@ struct OrderSummary {
   double size;
 };
 
-using AssetId = FixedString<77>;
-using MarketId = FixedString<66>;
 using OrderList = SmallVector<OrderSummary, 20>;
 
 // Book snapshot message (book event)

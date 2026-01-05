@@ -1,6 +1,5 @@
 #pragma once
 #include <map>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -15,7 +14,7 @@ struct Position {
 class PortfolioTracker {
  public:
   void on_fill(const FillReport& fill);
-  void update_mark_to_market(const std::string& market_id, Outcome outcome, double mid_price);
+  void update_mark_to_market(const MarketId& market_id, Outcome outcome, double mid_price);
   void record_equity_snapshot();
 
   double get_realized_pnl() const noexcept { return realized_pnl_; }
@@ -23,12 +22,12 @@ class PortfolioTracker {
   double get_total_pnl() const { return get_realized_pnl() + get_unrealized_pnl(); }
   double get_sharpe_ratio() const;
 
-  const std::map<std::pair<std::string, Outcome>, Position>& get_positions() const {
+  const std::map<std::pair<MarketId, Outcome>, Position>& get_positions() const {
     return positions_;
   }
 
  private:
-  using PositionKey = std::pair<std::string, Outcome>;
+  using PositionKey = std::pair<MarketId, Outcome>;
 
   std::map<PositionKey, Position> positions_;
   std::map<PositionKey, double> mid_prices_;

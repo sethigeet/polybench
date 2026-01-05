@@ -11,10 +11,11 @@
 #include <vector>
 
 #include "json_parser.hpp"
+#include "types/common.hpp"
 
 struct WsConfig {
   std::string url = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
-  std::vector<std::string> asset_ids;
+  std::vector<AssetId> asset_ids;
   // Polymarket requires a ping interval of 10 seconds to keep the connection alive
   int ping_interval_secs = 10;
   int reconnect_wait_secs = 1;
@@ -69,7 +70,7 @@ class PolymarketWS {
 
   std::mutex callback_mutex_;
   std::mutex subscription_mutex_;
-  std::unordered_set<std::string> current_subscriptions_;
+  std::unordered_set<AssetId> current_subscriptions_;
 
   // Message queue for decoupling WS thread from processing thread
   std::queue<PolymarketMessage> message_queue_;

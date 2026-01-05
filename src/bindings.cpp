@@ -122,7 +122,7 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("timestamp", &MarketResolvedMessage::timestamp);
 
   py::class_<OrderRequest>(m, "OrderRequest")
-      .def(py::init<std::string, Outcome, double, double, Side>(), py::arg("market_id"),
+      .def(py::init<MarketId, Outcome, double, double, Side>(), py::arg("market_id"),
            py::arg("outcome"), py::arg("price"), py::arg("quantity"), py::arg("side"))
       .def_readwrite("market_id", &OrderRequest::market_id)
       .def_readwrite("outcome", &OrderRequest::outcome)
@@ -131,7 +131,7 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readwrite("side", &OrderRequest::side);
 
   py::class_<Order>(m, "Order")
-      .def(py::init<std::string, Outcome, uint64_t, double, double, Side, uint64_t>())
+      .def(py::init<MarketId, Outcome, uint64_t, double, double, Side, uint64_t>())
       .def_readonly("market_id", &Order::market_id)
       .def_readonly("outcome", &Order::outcome)
       .def_readonly("id", &Order::id)

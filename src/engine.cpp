@@ -172,14 +172,12 @@ void Engine::process_market_resolved_message(const MarketResolvedMessage& msg) {
   LOG_INFO("  Winning outcome: {} (asset: {})", msg.winning_outcome == Outcome::Yes ? "UP" : "DOWN",
            msg.winning_asset_id);
 
-  // portfolio_ uses std::string keys - convert here
-  std::string market_str{msg.market};
   if (msg.winning_outcome == Outcome::Yes) {
-    portfolio_.update_mark_to_market(market_str, Outcome::Yes, 1.0);
-    portfolio_.update_mark_to_market(market_str, Outcome::No, 0.0);
+    portfolio_.update_mark_to_market(msg.market, Outcome::Yes, 1.0);
+    portfolio_.update_mark_to_market(msg.market, Outcome::No, 0.0);
   } else {
-    portfolio_.update_mark_to_market(market_str, Outcome::Yes, 0.0);
-    portfolio_.update_mark_to_market(market_str, Outcome::No, 1.0);
+    portfolio_.update_mark_to_market(msg.market, Outcome::Yes, 0.0);
+    portfolio_.update_mark_to_market(msg.market, Outcome::No, 1.0);
   }
   strategy_->on_market_resolved(msg);
 
@@ -230,9 +228,7 @@ void Engine::update_mtm(const MarketId& market_id, const AssetId& asset_id) {
   }
 
   if (mtm_price > 0) {
-    // portfolio_ uses std::string - convert here
-    portfolio_.update_mark_to_market(std::string{std::string_view{market_id}}, *outcome_opt,
-                                     mtm_price);
+    portfolio_.update_mark_to_market(market_id, *outcome_opt, mtm_price);
   }
 }
 

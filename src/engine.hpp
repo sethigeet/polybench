@@ -14,13 +14,13 @@
 
 struct EngineConfig {
   std::string ws_url = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
-  std::vector<std::string> asset_ids;
+  std::vector<AssetId> asset_ids;
 
   struct AssetMapping {
     MarketId market_id;
     Outcome outcome;
   };
-  std::unordered_map<std::string, AssetMapping> asset_mappings;
+  std::unordered_map<AssetId, AssetMapping> asset_mappings;
 };
 
 class Engine {

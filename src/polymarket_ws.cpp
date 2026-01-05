@@ -135,7 +135,7 @@ void PolymarketWS::subscribe(const R& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
     for (const auto& id : asset_ids) {
-      current_subscriptions_.insert(std::string{std::string_view{id}});
+      current_subscriptions_.insert(AssetId{id});
     }
   }
 
@@ -167,8 +167,8 @@ void PolymarketWS::unsubscribe(const R& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
     for (const auto& id : asset_ids) {
-      std::string id_str{std::string_view{id}};
-      if (current_subscriptions_.erase(id_str) == 0) {
+      AssetId asset_id{id};
+      if (current_subscriptions_.erase(asset_id) == 0) {
         LOG_WARN("Asset {} not found in current subscriptions", id);
       }
     }
@@ -193,7 +193,7 @@ void PolymarketWS::handle_message(const std::string& message) {
 }
 
 // Explicit template instantiations for types used in the codebase
-template void PolymarketWS::subscribe<std::vector<std::string>>(const std::vector<std::string>&);
-template void PolymarketWS::unsubscribe<std::vector<std::string>>(const std::vector<std::string>&);
+template void PolymarketWS::subscribe<std::vector<AssetId>>(const std::vector<AssetId>&);
+template void PolymarketWS::unsubscribe<std::vector<AssetId>>(const std::vector<AssetId>&);
 template void PolymarketWS::subscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);
 template void PolymarketWS::unsubscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);

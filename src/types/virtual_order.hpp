@@ -1,11 +1,10 @@
 #pragma once
 #include <cstdint>
-#include <string>
 
 #include "common.hpp"
 
 struct VirtualOrder {
-  std::string market_id;
+  MarketId market_id;
   Outcome outcome;
   uint64_t id;
   double price;

@@ -65,7 +65,7 @@ void PortfolioTracker::on_fill(const FillReport& fill) {
   pos.quantity = new_qty;
 }
 
-void PortfolioTracker::update_mark_to_market(const std::string& market_id, Outcome outcome,
+void PortfolioTracker::update_mark_to_market(const MarketId& market_id, Outcome outcome,
                                              double mid_price) {
   mid_prices_[{market_id, outcome}] = mid_price;
 }
