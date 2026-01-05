@@ -195,92 +195,37 @@ MarketResolvedMessage JsonParser::parse_market_resolved_message(simdjson::ondema
   return msg;
 }
 
-double JsonParser::parse_double(simdjson::ondemand::value val) {
-  auto type_result = val.type();
-  if (type_result.error()) [[unlikely]]
-    return 0.0;
-
-  auto type = type_result.value();
-  if (type == simdjson::ondemand::json_type::string) {
-    auto str_result = val.get_string();
-    if (str_result.error()) [[unlikely]]
-      return 0.0;
-    std::string_view str = str_result.value();
-    double value = 0.0;
-    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
-    if (ec != std::errc{}) {
-      LOG_ERROR("Failed to parse double from string: {}", str);
-      return 0.0;
-    }
-    return value;
-  } else if (type == simdjson::ondemand::json_type::number) {
-    auto num_result = val.get_double();
-    if (num_result.error()) [[unlikely]]
-      return 0.0;
-    return num_result.value();
-  } else {
+double JsonParser::parse_double(std::string_view str) {
+  double value = 0.0;
+  auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+  if (ec != std::errc{}) [[unlikely]] {
+    LOG_ERROR("Failed to parse double from string: {}", str);
     return 0.0;
   }
+  return value;
 }
 
-int JsonParser::parse_int(simdjson::ondemand::value val) {
-  auto type_result = val.type();
-  if (type_result.error()) [[unlikely]]
-    return 0;
-
-  auto type = type_result.value();
-  if (type == simdjson::ondemand::json_type::string) {
-    auto str_result = val.get_string();
-    if (str_result.error()) [[unlikely]]
-      return 0;
-    int value = 0;
-    std::string_view str = str_result.value();
-    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
-    if (ec != std::errc{}) {
-      LOG_ERROR("Failed to parse int from string: {}", str);
-      return 0;
-    }
-    return value;
-  } else if (type == simdjson::ondemand::json_type::number) {
-    auto num_result = val.get_int64();
-    if (num_result.error()) [[unlikely]]
-      return 0;
-    return static_cast<int>(num_result.value());
-  } else {
+int JsonParser::parse_int(std::string_view str) {
+  int value = 0;
+  auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+  if (ec != std::errc{}) [[unlikely]] {
+    LOG_ERROR("Failed to parse int from string: {}", str);
     return 0;
   }
+  return value;
 }
 
-uint64_t JsonParser::parse_timestamp(simdjson::ondemand::value val) {
-  auto type_result = val.type();
-  if (type_result.error()) [[unlikely]]
-    return 0;
-
-  auto type = type_result.value();
-  if (type == simdjson::ondemand::json_type::string) {
-    auto str_result = val.get_string();
-    if (str_result.error()) [[unlikely]]
-      return 0;
-    std::string_view str = str_result.value();
-    uint64_t value = 0;
-    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
-    if (ec != std::errc{}) {
-      LOG_ERROR("Failed to parse timestamp from string: {}", str);
-      return 0;
-    }
-    return value;
-  } else if (type == simdjson::ondemand::json_type::number) {
-    auto num_result = val.get_uint64();
-    if (num_result.error()) [[unlikely]]
-      return 0;
-    return num_result.value();
-  } else {
+uint64_t JsonParser::parse_timestamp(std::string_view str) {
+  uint64_t value = 0;
+  auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+  if (ec != std::errc{}) [[unlikely]] {
+    LOG_ERROR("Failed to parse timestamp from string: {}", str);
     return 0;
   }
+  return value;
 }
 
-Side JsonParser::parse_side(simdjson::ondemand::value val) noexcept {
-  const std::string_view str = val.get_string().value();
+Side JsonParser::parse_side(std::string_view str) noexcept {
   if (!str.empty()) [[likely]] {
     const char first = str[0] | 0x20;
     if (first == 'b') return Side::Buy;
@@ -288,8 +233,7 @@ Side JsonParser::parse_side(simdjson::ondemand::value val) noexcept {
   return Side::Sell;
 }
 
-Outcome JsonParser::parse_outcome(simdjson::ondemand::value val) noexcept {
-  const std::string_view str = val.get_string().value();
+Outcome JsonParser::parse_outcome(std::string_view str) noexcept {
   if (!str.empty()) [[likely]] {
     const char first = str[0] | 0x20;
     if (first == 'y' || first == 'u') return Outcome::Yes;

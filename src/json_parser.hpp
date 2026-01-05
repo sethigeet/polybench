@@ -30,9 +30,9 @@ class JsonParser {
   TickSizeChangeMessage parse_tick_size_change_message(simdjson::ondemand::object& obj);
   MarketResolvedMessage parse_market_resolved_message(simdjson::ondemand::object& obj);
 
-  static double parse_double(simdjson::ondemand::value val);
-  static int parse_int(simdjson::ondemand::value val);
-  static uint64_t parse_timestamp(simdjson::ondemand::value val);
-  static Side parse_side(simdjson::ondemand::value val) noexcept;
-  static Outcome parse_outcome(simdjson::ondemand::value val) noexcept;
+  static double parse_double(std::string_view str);
+  static int parse_int(std::string_view str);
+  static uint64_t parse_timestamp(std::string_view str);
+  static Side parse_side(std::string_view str) noexcept;
+  static Outcome parse_outcome(std::string_view str) noexcept;
 };
