@@ -79,9 +79,9 @@ void Engine::stop() {
   if (running_) {
     LOG_INFO("Stopping engine...");
     running_ = false;
-    if (ws_) {
-      ws_->stop();
-    }
+    // NOTE: Don't call ws_->stop() here - it can cause a deadlock if called from
+    // a signal handler while the main thread is holding queue_mutex_ in poll_messages().
+    // The WebSocket will be cleaned up in the destructor after the main loop exits.
   }
 }
 
