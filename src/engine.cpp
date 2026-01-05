@@ -5,6 +5,8 @@
 #include <thread>
 #include <variant>
 
+#include "types/fixed_string.hpp"
+
 #define LOGGER_NAME "Engine"
 #include "logger.hpp"
 
@@ -18,7 +20,7 @@ Engine::Engine(std::shared_ptr<Strategy> strategy, const EngineConfig& config)
           portfolio_.on_fill(*fill);
         }
       },
-      [this](const std::string& market_id, uint64_t id) {
+      [this](const MarketId& market_id, uint64_t id) {
         this->exchange_.cancel_order(market_id, id);
       });
 
@@ -107,7 +109,12 @@ void Engine::process_book_message(const BookMessage& msg) {
   LOG_DEBUG("Book snapshot for asset {} in market {}: {} bids, {} asks", msg.asset_id, msg.market,
             msg.bids.size(), msg.asks.size());
 
-  auto& book = books_[msg.market];
+  auto it = books_.find(msg.market);
+  if (it == books_.end()) {
+    it = books_.emplace(msg.market, MarketBook{}).first;
+  }
+  auto& book = it->second;
+
   book.on_book_message(msg);
   strategy_->on_book(msg);
   update_mtm(msg.market, msg.asset_id);
@@ -127,7 +134,9 @@ void Engine::process_book_message(const BookMessage& msg) {
 void Engine::process_price_change_message(const PriceChangeMessage& msg) {
   LOG_DEBUG("Price change in market {}: {} changes", msg.market, msg.price_changes.size());
 
-  auto& book = books_[msg.market];
+  auto it = books_.find(msg.market);
+  if (it == books_.end()) return;
+  auto& book = it->second;
 
   for (const auto& change : msg.price_changes) {
     book.on_price_change(change);
@@ -163,12 +172,14 @@ void Engine::process_market_resolved_message(const MarketResolvedMessage& msg) {
   LOG_INFO("  Winning outcome: {} (asset: {})", msg.winning_outcome == Outcome::Yes ? "UP" : "DOWN",
            msg.winning_asset_id);
 
+  // portfolio_ uses std::string keys - convert here
+  std::string market_str{msg.market};
   if (msg.winning_outcome == Outcome::Yes) {
-    portfolio_.update_mark_to_market(msg.market, Outcome::Yes, 1.0);
-    portfolio_.update_mark_to_market(msg.market, Outcome::No, 0.0);
+    portfolio_.update_mark_to_market(market_str, Outcome::Yes, 1.0);
+    portfolio_.update_mark_to_market(market_str, Outcome::No, 0.0);
   } else {
-    portfolio_.update_mark_to_market(msg.market, Outcome::Yes, 0.0);
-    portfolio_.update_mark_to_market(msg.market, Outcome::No, 1.0);
+    portfolio_.update_mark_to_market(market_str, Outcome::Yes, 0.0);
+    portfolio_.update_mark_to_market(market_str, Outcome::No, 1.0);
   }
   strategy_->on_market_resolved(msg);
 
@@ -186,10 +197,12 @@ void Engine::process_market_resolved_message(const MarketResolvedMessage& msg) {
   }
 }
 
-void Engine::update_mtm(const std::string& market_id, const std::string& asset_id) {
-  auto& book = books_[market_id];
-  auto outcome_opt = book.get_outcome(asset_id);
+void Engine::update_mtm(const MarketId& market_id, const AssetId& asset_id) {
+  auto it = books_.find(market_id);
+  if (it == books_.end()) return;
+  auto& book = it->second;
 
+  auto outcome_opt = book.get_outcome(asset_id);
   if (!outcome_opt) return;
 
   double mtm_price = 0.0;
@@ -217,7 +230,9 @@ void Engine::update_mtm(const std::string& market_id, const std::string& asset_i
   }
 
   if (mtm_price > 0) {
-    portfolio_.update_mark_to_market(market_id, *outcome_opt, mtm_price);
+    // portfolio_ uses std::string - convert here
+    portfolio_.update_mark_to_market(std::string{std::string_view{market_id}}, *outcome_opt,
+                                     mtm_price);
   }
 }
 

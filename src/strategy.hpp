@@ -22,12 +22,12 @@ class Strategy {
   virtual void on_market_resolved(const MarketResolvedMessage &msg) {};
 
   void set_engine_callbacks(std::function<void(const Order &)> submit,
-                            std::function<void(const std::string &, uint64_t)> cancel) {
+                            std::function<void(const MarketId&, uint64_t)> cancel) {
     submit_order_fn = submit;
     cancel_order_fn = cancel;
   }
 
-  void set_books(const std::unordered_map<std::string, MarketBook> *books) { books_ = books; }
+  void set_books(const std::unordered_map<MarketId, MarketBook> *books) { books_ = books; }
 
   uint64_t submit_order(const OrderRequest &request) {
     uint64_t order_id = next_order_id_.fetch_add(1, std::memory_order_relaxed);
@@ -41,67 +41,66 @@ class Strategy {
     return order_id;
   }
 
-  void cancel_order(const std::string &market_id, uint64_t id) {
+  void cancel_order(const MarketId& market_id, uint64_t id) {
     if (cancel_order_fn) cancel_order_fn(market_id, id);
   }
 
   // # YES Side Getters
 
-  std::optional<double> get_yes_best_bid(const std::string &market_id) const {
+  std::optional<double> get_yes_best_bid(const MarketId& market_id) const {
     auto *book = get_book(market_id);
     return book ? book->get_yes_best_bid() : std::nullopt;
   }
 
-  std::optional<double> get_yes_best_ask(const std::string &market_id) const {
+  std::optional<double> get_yes_best_ask(const MarketId& market_id) const {
     auto *book = get_book(market_id);
     return book ? book->get_yes_best_ask() : std::nullopt;
   }
 
-  double get_yes_bid_depth(const std::string &market_id, double price) const {
+  double get_yes_bid_depth(const MarketId& market_id, double price) const {
     auto *book = get_book(market_id);
     return book ? book->get_yes_bid_depth(price) : 0.0;
   }
 
-  double get_yes_ask_depth(const std::string &market_id, double price) const {
+  double get_yes_ask_depth(const MarketId& market_id, double price) const {
     auto *book = get_book(market_id);
     return book ? book->get_yes_ask_depth(price) : 0.0;
   }
 
   // # NO Side Getters
 
-  std::optional<double> get_no_best_bid(const std::string &market_id) const {
+  std::optional<double> get_no_best_bid(const MarketId& market_id) const {
     auto *book = get_book(market_id);
     return book ? book->get_no_best_bid() : std::nullopt;
   }
 
-  std::optional<double> get_no_best_ask(const std::string &market_id) const {
+  std::optional<double> get_no_best_ask(const MarketId& market_id) const {
     auto *book = get_book(market_id);
     return book ? book->get_no_best_ask() : std::nullopt;
   }
 
-  double get_no_bid_depth(const std::string &market_id, double price) const {
+  double get_no_bid_depth(const MarketId& market_id, double price) const {
     auto *book = get_book(market_id);
     return book ? book->get_no_bid_depth(price) : 0.0;
   }
 
-  double get_no_ask_depth(const std::string &market_id, double price) const {
+  double get_no_ask_depth(const MarketId& market_id, double price) const {
     auto *book = get_book(market_id);
     return book ? book->get_no_ask_depth(price) : 0.0;
   }
 
-  std::optional<Outcome> get_outcome(const std::string &market_id,
-                                     const std::string &asset_id) const {
+  std::optional<Outcome> get_outcome(const MarketId& market_id, const AssetId& asset_id) const {
     auto *book = get_book(market_id);
     return book ? book->get_outcome(asset_id) : std::nullopt;
   }
 
  private:
   std::function<void(const Order &)> submit_order_fn;
-  std::function<void(const std::string &, uint64_t)> cancel_order_fn;
-  const std::unordered_map<std::string, MarketBook> *books_ = nullptr;
+  std::function<void(const MarketId&, uint64_t)> cancel_order_fn;
+  const std::unordered_map<MarketId, MarketBook> *books_ = nullptr;
   std::atomic<uint64_t> next_order_id_{1};
 
-  const MarketBook *get_book(const std::string &market_id) const {
+  const MarketBook *get_book(const MarketId& market_id) const {
     if (!books_) return nullptr;
     auto it = books_->find(market_id);
     if (it == books_->end()) return nullptr;

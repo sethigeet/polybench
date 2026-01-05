@@ -1,7 +1,6 @@
 #pragma once
 #include <map>
 #include <optional>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -14,8 +13,8 @@
 // Matching: BUY YES@p matches SELL YES@p OR BUY NO@(1-p) and so on...
 class MarketBook {
  public:
-  void register_asset(const std::string& asset_id, Outcome outcome);
-  std::optional<Outcome> get_outcome(const std::string& asset_id) const;
+  void register_asset(AssetId asset_id, Outcome outcome);
+  std::optional<Outcome> get_outcome(const AssetId& asset_id) const;
 
   void on_book_message(const BookMessage& msg);
   void on_price_change(const PriceChange& change);
@@ -36,7 +35,7 @@ class MarketBook {
   const std::vector<VirtualOrder>& get_virtual_orders() const { return virtual_orders_; }
 
  private:
-  std::unordered_map<std::string, Outcome> asset_outcomes_;
+  std::unordered_map<AssetId, Outcome> asset_outcomes_;
 
   // YES outcome order book (price -> quantity)
   std::map<double, double> yes_bids_;  // Higher price is better (rbegin)

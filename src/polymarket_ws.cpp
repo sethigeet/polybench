@@ -130,11 +130,12 @@ void send_subscription(const R& asset_ids, ix::WebSocket& ws) {
   ws.send(std::string(msg));
 }
 
-void PolymarketWS::subscribe(const std::vector<std::string>& asset_ids) {
+template <std::ranges::range R>
+void PolymarketWS::subscribe(const R& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
     for (const auto& id : asset_ids) {
-      current_subscriptions_.insert(id);
+      current_subscriptions_.insert(std::string{std::string_view{id}});
     }
   }
 
@@ -161,11 +162,13 @@ void send_unsubscription(const R& asset_ids, ix::WebSocket& ws) {
   ws.send(std::string(msg));
 }
 
-void PolymarketWS::unsubscribe(const std::vector<std::string>& asset_ids) {
+template <std::ranges::range R>
+void PolymarketWS::unsubscribe(const R& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
     for (const auto& id : asset_ids) {
-      if (current_subscriptions_.erase(id) == 0) {
+      std::string id_str{std::string_view{id}};
+      if (current_subscriptions_.erase(id_str) == 0) {
         LOG_WARN("Asset {} not found in current subscriptions", id);
       }
     }
@@ -188,3 +191,9 @@ void PolymarketWS::handle_message(const std::string& message) {
     LOG_DEBUG("Queued {} messages (queue size: {})", parsed.size(), message_queue_.size());
   }
 }
+
+// Explicit template instantiations for types used in the codebase
+template void PolymarketWS::subscribe<std::vector<std::string>>(const std::vector<std::string>&);
+template void PolymarketWS::unsubscribe<std::vector<std::string>>(const std::vector<std::string>&);
+template void PolymarketWS::subscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);
+template void PolymarketWS::unsubscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);

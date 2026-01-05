@@ -17,7 +17,7 @@ struct EngineConfig {
   std::vector<std::string> asset_ids;
 
   struct AssetMapping {
-    std::string market_id;
+    MarketId market_id;
     Outcome outcome;
   };
   std::unordered_map<std::string, AssetMapping> asset_mappings;
@@ -38,13 +38,13 @@ class Engine {
   void process_trade_message(const LastTradeMessage& msg);
   void process_tick_size_change_message(const TickSizeChangeMessage& msg);
   void process_market_resolved_message(const MarketResolvedMessage& msg);
-  void update_mtm(const std::string& market_id, const std::string& asset_id);
+  void update_mtm(const MarketId& market_id, const AssetId& asset_id);
   void print_portfolio_summary();
 
   EngineConfig config_;
   std::shared_ptr<Strategy> strategy_;
-  std::unordered_map<std::string, MarketBook> books_;
-  std::unordered_set<std::string> active_markets_;
+  std::unordered_map<MarketId, MarketBook> books_;
+  std::unordered_set<MarketId> active_markets_;
   Exchange exchange_;
   PortfolioTracker portfolio_;
   std::unique_ptr<PolymarketWS> ws_;

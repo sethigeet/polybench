@@ -51,8 +51,10 @@ class PolymarketWS {
   // Returns up to max_messages, or all available if max_messages is 0
   std::vector<PolymarketMessage> poll_messages(size_t max_messages = 0);
 
-  void subscribe(const std::vector<std::string>& asset_ids);
-  void unsubscribe(const std::vector<std::string>& asset_ids);
+  template <std::ranges::range R>
+  void subscribe(const R& asset_ids);
+  template <std::ranges::range R>
+  void unsubscribe(const R& asset_ids);
 
  private:
   void handle_message(const std::string& message);

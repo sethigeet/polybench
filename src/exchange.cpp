@@ -3,7 +3,7 @@
 #define LOGGER_NAME "Exchange"
 #include "logger.hpp"
 
-MarketBook* Exchange::get_book(const std::string& market_id) {
+MarketBook* Exchange::get_book(const MarketId& market_id) {
   if (!books_) return nullptr;
   auto it = books_->find(market_id);
   if (it == books_->end()) return nullptr;
@@ -39,7 +39,7 @@ std::optional<FillReport> Exchange::submit_order(const Order& order) {
   return std::nullopt;
 }
 
-void Exchange::cancel_order(const std::string& market_id, uint64_t order_id) {
+void Exchange::cancel_order(const MarketId& market_id, uint64_t order_id) {
   auto* book = get_book(market_id);
   if (!book) return;
 
@@ -170,9 +170,9 @@ std::vector<FillReport> Exchange::process_trade(const LastTradeMessage& trade) {
                                trade.timestamp);
 }
 
-std::vector<FillReport> Exchange::process_virtual_fills(const std::string& market_id,
-                                                        Outcome outcome, double price, Side side,
-                                                        double trade_size, uint64_t timestamp) {
+std::vector<FillReport> Exchange::process_virtual_fills(const MarketId& market_id, Outcome outcome,
+                                                        double price, Side side, double trade_size,
+                                                        uint64_t timestamp) {
   auto* book = get_book(market_id);
   if (!book) return {};
 
@@ -206,8 +206,8 @@ std::vector<FillReport> Exchange::process_virtual_fills(const std::string& marke
       order.volume_ahead -= trade_size;
 
       if (order.volume_ahead <= 0) {
-        fills.push_back({market_id, order.outcome, order.id, order.price, order.quantity, timestamp,
-                         order.side});
+        fills.push_back({order.market_id, order.outcome, order.id, order.price, order.quantity,
+                         timestamp, order.side});
         to_remove.push_back(order.id);
         LOG_DEBUG("Virtual Order Filled: {} @ {} (outcome: {}, qty: {})", order.id, order.price,
                   (order.outcome == Outcome::Yes ? "YES" : "NO"), order.quantity);

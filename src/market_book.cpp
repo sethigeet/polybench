@@ -2,11 +2,11 @@
 
 #include <algorithm>
 
-void MarketBook::register_asset(const std::string& asset_id, Outcome outcome) {
+void MarketBook::register_asset(AssetId asset_id, Outcome outcome) {
   asset_outcomes_[asset_id] = outcome;
 }
 
-std::optional<Outcome> MarketBook::get_outcome(const std::string& asset_id) const {
+std::optional<Outcome> MarketBook::get_outcome(const AssetId& asset_id) const {
   auto it = asset_outcomes_.find(asset_id);
   if (it == asset_outcomes_.end()) return std::nullopt;
   return it->second;

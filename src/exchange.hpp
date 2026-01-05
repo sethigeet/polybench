@@ -27,21 +27,21 @@ class PriceValidationError : public std::runtime_error {
 
 class Exchange {
  public:
-  void set_books(std::unordered_map<std::string, MarketBook>* books) { books_ = books; }
+  void set_books(std::unordered_map<MarketId, MarketBook>* books) { books_ = books; }
 
   std::optional<FillReport> submit_order(const Order& order);
-  void cancel_order(const std::string& market_id, uint64_t order_id);
+  void cancel_order(const MarketId& market_id, uint64_t order_id);
 
   std::vector<FillReport> process_trade(const LastTradeMessage& trade);
 
  private:
-  std::unordered_map<std::string, MarketBook>* books_ = nullptr;
+  std::unordered_map<MarketId, MarketBook>* books_ = nullptr;
 
-  MarketBook* get_book(const std::string& market_id);
+  MarketBook* get_book(const MarketId& market_id);
 
   std::optional<FillReport> try_fill_taker(const Order& order);
   void add_maker_order(const Order& order);
-  std::vector<FillReport> process_virtual_fills(const std::string& market_id, Outcome outcome,
+  std::vector<FillReport> process_virtual_fills(const MarketId& market_id, Outcome outcome,
                                                 double price, Side side, double trade_size,
                                                 uint64_t timestamp);
 };

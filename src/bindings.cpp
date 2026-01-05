@@ -4,12 +4,70 @@
 
 #include "strategy.hpp"
 #include "types/common.hpp"
+#include "types/fixed_string.hpp"
 #include "types/polymarket.hpp"
+#include "types/small_vector.hpp"
 
 #define LOGGER_NAME "Python"
 #include "logger.hpp"
 
 namespace py = pybind11;
+
+// Custom type caster for FixedString<N> to Python str
+// Since FixedString implicitly converts to string_view, we just need to handle the conversion
+namespace pybind11 {
+namespace detail {
+
+template <size_t N>
+struct type_caster<FixedString<N>> {
+ public:
+  PYBIND11_TYPE_CASTER(FixedString<N>, const_name("str"));
+
+  // Python str -> FixedString
+  bool load(handle src, bool) {
+    if (!py::isinstance<py::str>(src)) return false;
+    value = FixedString<N>(src.cast<std::string_view>());
+    return true;
+  }
+
+  // FixedString -> Python str (uses implicit string_view conversion)
+  static handle cast(const FixedString<N>& src, return_value_policy, handle) {
+    return py::str(std::string_view(src)).release();
+  }
+};
+
+// Custom type caster for SmallVector<T, N> to Python list
+template <typename T, size_t N>
+struct type_caster<SmallVector<T, N>> {
+ public:
+  using value_type = SmallVector<T, N>;
+  PYBIND11_TYPE_CASTER(value_type, const_name("list[") + make_caster<T>::name + const_name("]"));
+
+  // Python list -> SmallVector
+  bool load(handle src, bool convert) {
+    if (!py::isinstance<py::sequence>(src)) return false;
+    auto seq = py::reinterpret_borrow<py::sequence>(src);
+    value.clear();
+    for (auto item : seq) {
+      make_caster<T> conv;
+      if (!conv.load(item, convert)) return false;
+      value.push_back(cast_op<T>(std::move(conv)));
+    }
+    return true;
+  }
+
+  // SmallVector -> Python list
+  static handle cast(const value_type& src, return_value_policy policy, handle parent) {
+    py::list result;
+    for (const auto& item : src) {
+      result.append(py::cast(item, policy, parent));
+    }
+    return result.release();
+  }
+};
+
+}  // namespace detail
+}  // namespace pybind11
 
 PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
   // Logging submodule

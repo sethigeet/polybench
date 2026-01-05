@@ -1,28 +1,32 @@
 #pragma once
 #include <cstdint>
-#include <string>
-#include <vector>
 
 #include "common.hpp"
+#include "fixed_string.hpp"
+#include "small_vector.hpp"
 
 struct OrderSummary {
   double price;
   double size;
 };
 
+using AssetId = FixedString<77>;
+using MarketId = FixedString<66>;
+using OrderList = SmallVector<OrderSummary, 20>;
+
 // Book snapshot message (book event)
 // Emitted on first subscription and when a trade affects the book
 struct BookMessage {
-  std::string asset_id;  // ERC1155 token ID
-  std::string market;    // Condition ID (hex)
-  std::vector<OrderSummary> bids;
-  std::vector<OrderSummary> asks;
+  AssetId asset_id;
+  MarketId market;
+  OrderList bids;
+  OrderList asks;
   uint64_t timestamp;
 };
 
 // Single price change within a price_change message
 struct PriceChange {
-  std::string asset_id;
+  AssetId asset_id;
   double price;
   double size;  // New total size at this price level
   Side side;
@@ -30,19 +34,21 @@ struct PriceChange {
   double best_ask;
 };
 
+using PriceChangeList = SmallVector<PriceChange, 2>;
+
 // price_change message
 // Emitted when a new order is placed or an order is cancelled
 struct PriceChangeMessage {
-  std::string market;  // Condition ID
-  std::vector<PriceChange> price_changes;
+  MarketId market;  // Condition ID
+  PriceChangeList price_changes;
   uint64_t timestamp;
 };
 
 // last_trade_price message
 // Emitted when a maker and taker order is matched
 struct LastTradeMessage {
-  std::string asset_id;
-  std::string market;
+  AssetId asset_id;
+  MarketId market;
   double price;
   Side side;
   double size;
@@ -53,8 +59,8 @@ struct LastTradeMessage {
 // tick_size_change message
 // Emitted when price reaches limits (>0.96 or <0.04)
 struct TickSizeChangeMessage {
-  std::string asset_id;
-  std::string market;
+  AssetId asset_id;
+  MarketId market;
   double old_tick_size;
   double new_tick_size;
   uint64_t timestamp;
@@ -63,10 +69,10 @@ struct TickSizeChangeMessage {
 // market_resolved message
 // Emitted when a market is resolved
 struct MarketResolvedMessage {
-  std::string market;
-  std::string winning_asset_id;
+  MarketId market;
+  AssetId winning_asset_id;
   Outcome winning_outcome;
-  std::vector<std::string> asset_ids;
-  std::vector<Outcome> outcomes;
+  SmallVector<AssetId, 2> asset_ids;
+  SmallVector<Outcome, 2> outcomes;
   uint64_t timestamp;
 };
