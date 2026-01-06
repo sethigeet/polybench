@@ -73,18 +73,16 @@ void PolymarketWS::on_error(ErrorCallback callback) {
   error_callback_ = std::move(callback);
 }
 
-std::vector<PolymarketMessage> PolymarketWS::poll_messages(size_t max_messages) {
-  std::vector<PolymarketMessage> messages;
-  std::lock_guard<std::mutex> lock(queue_mutex_);
-
+size_t PolymarketWS::poll_messages(SmallVector<PolymarketMessage, kMessageBatchSize>& out,
+                                   size_t max_messages) {
   size_t count = 0;
-  while (!message_queue_.empty() && (max_messages == 0 || count < max_messages)) {
-    messages.push_back(std::move(message_queue_.front()));
-    message_queue_.pop();
+  while (max_messages == 0 || count < max_messages) {
+    auto msg = message_buffer_.pop();
+    if (!msg) break;
+    out.push_back(std::move(*msg));
     ++count;
   }
-
-  return messages;
+  return count;
 }
 
 void PolymarketWS::on_connect(ConnectCallback callback) {
@@ -183,12 +181,13 @@ void PolymarketWS::handle_message(const std::string& message) {
   LOG_DEBUG("Received message ({} bytes)", message.length());
 
   auto parsed = json_parser_.parse(message);
+  for (auto& msg : parsed) {
+    message_buffer_.push_wait(std::move(msg), []() {
+      LOG_WARN("Ring buffer full - experiencing backpressure from slow consumer");
+    });
+  }
   if (!parsed.empty()) {
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-    for (auto& msg : parsed) {
-      message_queue_.push(std::move(msg));
-    }
-    LOG_DEBUG("Queued {} messages (queue size: {})", parsed.size(), message_queue_.size());
+    LOG_DEBUG("Queued {} messages (buffer size: {})", parsed.size(), message_buffer_.size());
   }
 }
 

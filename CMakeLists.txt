@@ -82,6 +82,7 @@ enable_testing()
 add_executable(polybench_tests
     tests/test_fixed_string.cpp
     tests/test_small_vector.cpp
+    tests/test_ring_buffer.cpp
     tests/test_market_book.cpp
     tests/test_exchange.cpp
     tests/test_portfolio_tracker.cpp

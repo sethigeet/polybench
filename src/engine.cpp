@@ -57,15 +57,17 @@ void Engine::run() {
 
   // Main event loop - poll messages from WebSocket and process them
   // This ensures Python callbacks run on the main thread, not the WS thread
+  SmallVector<PolymarketMessage, kMessageBatchSize> messages;
   while (running_) {
-    auto messages = ws_->poll_messages();
+    messages.clear();
+    ws_->poll_messages(messages, kMessageBatchSize);
 
     if (messages.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
     }
 
-    LOG_DEBUG("Polled {} messages from queue", messages.size());
+    LOG_DEBUG("Polled {} messages from buffer", messages.size());
     for (const auto& msg : messages) {
       process_message(msg);
     }
@@ -79,9 +81,7 @@ void Engine::stop() {
   if (running_) {
     LOG_INFO("Stopping engine...");
     running_ = false;
-    // NOTE: Don't call ws_->stop() here - it can cause a deadlock if called from
-    // a signal handler while the main thread is holding queue_mutex_ in poll_messages().
-    // The WebSocket will be cleaned up in the destructor after the main loop exits.
+    ws_->stop();
   }
 }
 

@@ -5,13 +5,14 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
-#include <queue>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include "json_parser.hpp"
-#include "types/common.hpp"
+#include "types/ring_buffer.hpp"
+
+inline constexpr size_t kMessageBatchSize = 16;
 
 struct WsConfig {
   std::string url = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
@@ -48,9 +49,11 @@ class PolymarketWS {
   void stop();
   bool is_connected() const;
 
-  // Poll messages from queue (call from main thread to avoid blocking WS thread)
-  // Returns up to max_messages, or all available if max_messages is 0
-  std::vector<PolymarketMessage> poll_messages(size_t max_messages = 0);
+  // Poll messages from ring buffer (call from main thread to avoid blocking WS thread)
+  // Appends up to max_messages to out, or all available if max_messages is 0
+  // Returns number of messages polled
+  size_t poll_messages(SmallVector<PolymarketMessage, kMessageBatchSize>& out,
+                       size_t max_messages = 0);
 
   template <std::ranges::range R>
   void subscribe(const R& asset_ids);
@@ -72,9 +75,8 @@ class PolymarketWS {
   std::mutex subscription_mutex_;
   std::unordered_set<AssetId> current_subscriptions_;
 
-  // Message queue for decoupling WS thread from processing thread
-  std::queue<PolymarketMessage> message_queue_;
-  std::mutex queue_mutex_;
+  // Lock-free ring buffer for decoupling WS thread from processing thread
+  RingBuffer<PolymarketMessage, 1024> message_buffer_;
 
   // NOTE: simdjson parser is not thread-safe
   JsonParser json_parser_;
