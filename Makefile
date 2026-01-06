@@ -16,5 +16,8 @@ build: configure
 run: build
 	./$(BUILD_DIR)/$(EXECUTABLE) --config $(RUN_CONFIG)
 
+test: build
+	cd $(BUILD_DIR) && ctest --output-on-failure
+
 clean:
 	rm -rf $(BUILD_DIR)

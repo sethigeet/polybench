@@ -66,3 +66,29 @@ add_executable(polybench
     src/bindings.cpp
 )
 target_link_libraries(polybench PRIVATE polybench_core spdlog::spdlog)
+
+# Testing
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.15.2
+  GIT_SHALLOW TRUE
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(polybench_tests
+    tests/test_fixed_string.cpp
+    tests/test_small_vector.cpp
+    tests/test_market_book.cpp
+    tests/test_exchange.cpp
+    tests/test_portfolio_tracker.cpp
+    tests/test_json_parser.cpp
+)
+target_link_libraries(polybench_tests PRIVATE polybench_core GTest::gtest_main)
+target_include_directories(polybench_tests PRIVATE src)
+
+include(GoogleTest)
+gtest_discover_tests(polybench_tests)
