@@ -70,6 +70,53 @@ void PortfolioTracker::update_mark_to_market(const MarketId& market_id, Outcome 
   mid_prices_[{market_id, outcome}] = mid_price;
 }
 
+void PortfolioTracker::on_market_resolved(const MarketId& market_id, Outcome winning_outcome) {
+  PositionKey yes_key{market_id, Outcome::Yes};
+  PositionKey no_key{market_id, Outcome::No};
+
+  auto yes_it = positions_.find(yes_key);
+  auto no_it = positions_.find(no_key);
+
+  // Process YES position
+  if (yes_it != positions_.end() && yes_it->second.quantity != 0.0) {
+    double settlement_price = (winning_outcome == Outcome::Yes) ? 1.0 : 0.0;
+    Position& pos = yes_it->second;
+
+    if (pos.quantity > 0) {
+      // Long position: PnL = (settlement_price - avg_entry_price) * quantity
+      realized_pnl_ += pos.quantity * (settlement_price - pos.avg_entry_price);
+    } else {
+      // Short position: PnL = (avg_entry_price - settlement_price) * |quantity|
+      realized_pnl_ += (-pos.quantity) * (pos.avg_entry_price - settlement_price);
+    }
+
+    pos.quantity = 0.0;
+    pos.avg_entry_price = 0.0;
+    pos.cost_basis = 0.0;
+  }
+
+  // Process NO position
+  if (no_it != positions_.end() && no_it->second.quantity != 0.0) {
+    double settlement_price = (winning_outcome == Outcome::No) ? 1.0 : 0.0;
+    Position& pos = no_it->second;
+
+    if (pos.quantity > 0) {
+      // Long position: PnL = (settlement_price - avg_entry_price) * quantity
+      realized_pnl_ += pos.quantity * (settlement_price - pos.avg_entry_price);
+    } else {
+      // Short position: PnL = (avg_entry_price - settlement_price) * |quantity|
+      realized_pnl_ += (-pos.quantity) * (pos.avg_entry_price - settlement_price);
+    }
+
+    pos.quantity = 0.0;
+    pos.avg_entry_price = 0.0;
+    pos.cost_basis = 0.0;
+  }
+
+  mid_prices_.erase(yes_key);
+  mid_prices_.erase(no_key);
+}
+
 double PortfolioTracker::get_unrealized_pnl() const {
   double unrealized = 0.0;
 

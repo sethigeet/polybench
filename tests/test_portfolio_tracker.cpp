@@ -300,3 +300,141 @@ TEST_F(PortfolioTrackerTest, SharpeRatioZeroVolatility) {
 
   EXPECT_DOUBLE_EQ(tracker.get_sharpe_ratio(), 0.0);  // Returns are 0, stddev is 0
 }
+
+TEST_F(PortfolioTrackerTest, MarketResolvedLongYesWins) {
+  // Open long YES position
+  FillReport fill;
+  fill.market_id = market_id;
+  fill.outcome = Outcome::Yes;
+  fill.order_id = 1;
+  fill.filled_price = 0.50;
+  fill.filled_quantity = 10.0;
+  fill.timestamp = 1000;
+  fill.side = Side::Buy;
+  tracker.on_fill(fill);
+
+  // Market resolves YES wins (settles at 1.0)
+  tracker.on_market_resolved(market_id, Outcome::Yes);
+
+  // Realized PnL = 10 * (1.0 - 0.50) = 5.0
+  EXPECT_DOUBLE_EQ(tracker.get_realized_pnl(), 5.0);
+  EXPECT_DOUBLE_EQ(tracker.get_unrealized_pnl(), 0.0);
+
+  // Position should be cleared
+  auto& positions = tracker.get_positions();
+  auto it = positions.find({market_id, Outcome::Yes});
+  ASSERT_NE(it, positions.end());
+  EXPECT_EQ(it->second.quantity, 0.0);
+}
+
+TEST_F(PortfolioTrackerTest, MarketResolvedLongYesLoses) {
+  // Open long YES position
+  FillReport fill;
+  fill.market_id = market_id;
+  fill.outcome = Outcome::Yes;
+  fill.order_id = 1;
+  fill.filled_price = 0.50;
+  fill.filled_quantity = 10.0;
+  fill.timestamp = 1000;
+  fill.side = Side::Buy;
+  tracker.on_fill(fill);
+
+  // Market resolves NO wins (YES settles at 0.0)
+  tracker.on_market_resolved(market_id, Outcome::No);
+
+  // Realized PnL = 10 * (0.0 - 0.50) = -5.0
+  EXPECT_DOUBLE_EQ(tracker.get_realized_pnl(), -5.0);
+  EXPECT_DOUBLE_EQ(tracker.get_unrealized_pnl(), 0.0);
+}
+
+TEST_F(PortfolioTrackerTest, MarketResolvedLongNoWins) {
+  // Open long NO position
+  FillReport fill;
+  fill.market_id = market_id;
+  fill.outcome = Outcome::No;
+  fill.order_id = 1;
+  fill.filled_price = 0.40;
+  fill.filled_quantity = 10.0;
+  fill.timestamp = 1000;
+  fill.side = Side::Buy;
+  tracker.on_fill(fill);
+
+  // Market resolves NO wins (settles at 1.0)
+  tracker.on_market_resolved(market_id, Outcome::No);
+
+  // Realized PnL = 10 * (1.0 - 0.40) = 6.0
+  EXPECT_DOUBLE_EQ(tracker.get_realized_pnl(), 6.0);
+  EXPECT_DOUBLE_EQ(tracker.get_unrealized_pnl(), 0.0);
+}
+
+TEST_F(PortfolioTrackerTest, MarketResolvedShortYesWins) {
+  // Open short YES position
+  FillReport fill;
+  fill.market_id = market_id;
+  fill.outcome = Outcome::Yes;
+  fill.order_id = 1;
+  fill.filled_price = 0.60;
+  fill.filled_quantity = 10.0;
+  fill.timestamp = 1000;
+  fill.side = Side::Sell;
+  tracker.on_fill(fill);
+
+  // Market resolves YES wins (settles at 1.0)
+  // Short loses: (0.60 - 1.0) * 10 = -4.0
+  tracker.on_market_resolved(market_id, Outcome::Yes);
+
+  EXPECT_DOUBLE_EQ(tracker.get_realized_pnl(), -4.0);
+  EXPECT_DOUBLE_EQ(tracker.get_unrealized_pnl(), 0.0);
+}
+
+TEST_F(PortfolioTrackerTest, MarketResolvedShortYesLoses) {
+  // Open short YES position
+  FillReport fill;
+  fill.market_id = market_id;
+  fill.outcome = Outcome::Yes;
+  fill.order_id = 1;
+  fill.filled_price = 0.60;
+  fill.filled_quantity = 10.0;
+  fill.timestamp = 1000;
+  fill.side = Side::Sell;
+  tracker.on_fill(fill);
+
+  // Market resolves NO wins (YES settles at 0.0)
+  // Short wins: (0.60 - 0.0) * 10 = 6.0
+  tracker.on_market_resolved(market_id, Outcome::No);
+
+  EXPECT_DOUBLE_EQ(tracker.get_realized_pnl(), 6.0);
+  EXPECT_DOUBLE_EQ(tracker.get_unrealized_pnl(), 0.0);
+}
+
+TEST_F(PortfolioTrackerTest, MarketResolvedBothSides) {
+  // Open positions on both sides
+  FillReport yes_fill;
+  yes_fill.market_id = market_id;
+  yes_fill.outcome = Outcome::Yes;
+  yes_fill.order_id = 1;
+  yes_fill.filled_price = 0.55;
+  yes_fill.filled_quantity = 10.0;
+  yes_fill.timestamp = 1000;
+  yes_fill.side = Side::Buy;
+  tracker.on_fill(yes_fill);
+
+  FillReport no_fill;
+  no_fill.market_id = market_id;
+  no_fill.outcome = Outcome::No;
+  no_fill.order_id = 2;
+  no_fill.filled_price = 0.45;
+  no_fill.filled_quantity = 10.0;
+  no_fill.timestamp = 1000;
+  no_fill.side = Side::Buy;
+  tracker.on_fill(no_fill);
+
+  // Market resolves YES wins
+  // YES: (1.0 - 0.55) * 10 = 4.5
+  // NO: (0.0 - 0.45) * 10 = -4.5
+  // Total should be 0
+  tracker.on_market_resolved(market_id, Outcome::Yes);
+
+  EXPECT_DOUBLE_EQ(tracker.get_realized_pnl(), 0.0);
+  EXPECT_DOUBLE_EQ(tracker.get_unrealized_pnl(), 0.0);
+}

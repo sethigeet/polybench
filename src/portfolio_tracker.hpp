@@ -14,6 +14,7 @@ struct Position {
 class PortfolioTracker {
  public:
   void on_fill(const FillReport& fill);
+  void on_market_resolved(const MarketId& market_id, Outcome winning_outcome);
   void update_mark_to_market(const MarketId& market_id, Outcome outcome, double mid_price);
   void record_equity_snapshot();
 
