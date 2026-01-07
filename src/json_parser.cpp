@@ -187,11 +187,6 @@ MarketResolvedMessage JsonParser::parse_market_resolved_message(simdjson::ondema
     msg.asset_ids.emplace_back(id.get_string().value());
   }
 
-  auto outcomes_arr = obj["outcomes"].value().get_array().value();
-  for (auto outcome : outcomes_arr) {
-    msg.outcomes.push_back(parse_outcome(outcome.value()));
-  }
-
   return msg;
 }
 

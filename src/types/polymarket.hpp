@@ -70,6 +70,5 @@ struct MarketResolvedMessage {
   AssetId winning_asset_id;
   Outcome winning_outcome;
   SmallVector<AssetId, 2> asset_ids;
-  SmallVector<Outcome, 2> outcomes;
   uint64_t timestamp;
 };

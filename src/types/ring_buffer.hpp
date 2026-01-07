@@ -6,6 +6,7 @@
 #include <thread>
 #include <type_traits>
 
+// Align to cache line to avoid false sharing
 inline constexpr size_t kCacheLineSize = 64;
 
 /**

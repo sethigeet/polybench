@@ -146,9 +146,6 @@ TEST_F(JsonParserTest, ParseMarketResolvedMessage) {
   EXPECT_EQ(std::string_view(msg.winning_asset_id), "asset-yes");
   EXPECT_EQ(msg.winning_outcome, Outcome::Yes);
   ASSERT_EQ(msg.asset_ids.size(), 2);
-  ASSERT_EQ(msg.outcomes.size(), 2);
-  EXPECT_EQ(msg.outcomes[0], Outcome::Yes);
-  EXPECT_EQ(msg.outcomes[1], Outcome::No);
 }
 
 TEST_F(JsonParserTest, ParseArrayOfMessages) {
