@@ -101,3 +101,30 @@ if(BUILD_TESTS)
     include(GoogleTest)
     gtest_discover_tests(polybench_tests)
 endif()
+
+# Benchmarks (disabled by default)
+option(BUILD_BENCHMARKS "Build the benchmark suite" OFF)
+
+if(BUILD_BENCHMARKS)
+    FetchContent_Declare(
+      benchmark
+      GIT_REPOSITORY https://github.com/google/benchmark.git
+      GIT_TAG v1.9.1
+      GIT_SHALLOW TRUE
+    )
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(benchmark)
+
+    add_executable(polybench_benchmarks
+        benchmarks/bench_main.cpp
+        benchmarks/bench_exchange.cpp
+        benchmarks/bench_fixed_string.cpp
+        benchmarks/bench_json_parser.cpp
+        benchmarks/bench_market_book.cpp
+        benchmarks/bench_ring_buffer.cpp
+        benchmarks/bench_small_vector.cpp
+    )
+    target_link_libraries(polybench_benchmarks PRIVATE polybench_core benchmark::benchmark)
+    target_include_directories(polybench_benchmarks PRIVATE src)
+endif()
