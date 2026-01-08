@@ -23,7 +23,12 @@ configure-test:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DBUILD_TESTS=ON -G Ninja
 
 configure-bench:
+#  Do not use debug build for benchmarks
+ ifeq ($(BUILD_TYPE), Debug)
 	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=Release -DBUILD_BENCHMARKS=ON -G Ninja
+ else
+	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DBUILD_BENCHMARKS=ON -G Ninja
+ endif
 
 build: configure
 	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
