@@ -91,7 +91,7 @@ TEST_F(ExchangeTest, TakerFillBuyYesMatchesSellYes) {
   EXPECT_EQ(fill->side, Side::Buy);
 }
 
-TEST_F(ExchangeTest, TakerFillBuyYesMatchesBetterSellNo) {
+TEST_F(ExchangeTest, TakerFillBuyYesMatchesBetterSellYes) {
   setup_book_with_liquidity();
 
   // BUY YES @ 0.60 should also match SELL YES @ 0.55 (since that is a better price)
@@ -112,7 +112,7 @@ TEST_F(ExchangeTest, TakerFillBuyYesMatchesBetterSellNo) {
 TEST_F(ExchangeTest, TakerFillBuyYesMatchesBuyNo) {
   setup_book_with_liquidity();
 
-  // BUY NO @ 0.48 should also match BUY YES @ 0.52 (complement = 1 - 0.48 = 0.52)
+  // BUY NO @ 0.47 should also match BUY YES @ 0.53 (complement = 1 - 0.47 = 0.53)
   Order order;
   order.market_id = market_id;
   order.outcome = Outcome::No;

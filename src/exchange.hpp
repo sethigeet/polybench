@@ -42,6 +42,6 @@ class Exchange {
   std::optional<FillReport> try_fill_taker(const Order& order);
   void add_maker_order(const Order& order);
   std::vector<FillReport> process_virtual_fills(const MarketId& market_id, Outcome outcome,
-                                                double price, Side side, double trade_size,
+                                                double price, Side taker_side, double trade_size,
                                                 uint64_t timestamp);
 };

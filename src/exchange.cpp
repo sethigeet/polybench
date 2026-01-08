@@ -160,19 +160,17 @@ std::vector<FillReport> Exchange::process_trade(const LastTradeMessage& trade) {
   }
   Outcome outcome = *outcome_opt;
 
-  Side maker_side = (trade.side == Side::Buy) ? Side::Sell : Side::Buy;
-
   LOG_DEBUG("Processing trade: market {} outcome {} @ {} size {} (taker: {})", trade.market,
             (outcome == Outcome::Yes ? "YES" : "NO"), trade.price, trade.size,
             trade.side == Side::Buy ? "BUY" : "SELL");
 
-  return process_virtual_fills(trade.market, outcome, trade.price, maker_side, trade.size,
+  return process_virtual_fills(trade.market, outcome, trade.price, trade.side, trade.size,
                                trade.timestamp);
 }
 
 std::vector<FillReport> Exchange::process_virtual_fills(const MarketId& market_id, Outcome outcome,
-                                                        double price, Side side, double trade_size,
-                                                        uint64_t timestamp) {
+                                                        double price, Side taker_side,
+                                                        double trade_size, uint64_t timestamp) {
   auto* book = get_book(market_id);
   if (!book) return {};
 
@@ -185,31 +183,28 @@ std::vector<FillReport> Exchange::process_virtual_fills(const MarketId& market_i
   for (auto& order : virtual_orders) {
     if (order.market_id != market_id) continue;
 
-    bool matches = false;
-
-    // Check if this virtual order would be filled by the trade
-    // - Same outcome, same side orders at price P
-    // - Same outcome, opposite side orders at price (1-P)
-    // - Opposite outcome, opposite side orders at price (1-P)
-    // - Opposite outcome, same side orders at price P
-    if (order.outcome == outcome && order.side == side && order.price == price) {
-      matches = true;
-    } else if (order.outcome == outcome && order.side != side && order.price == complement) {
-      matches = true;
-    } else if (order.outcome != outcome && order.side != side && order.price == complement) {
-      matches = true;
-    } else if (order.outcome != outcome && order.side == side && order.price == price) {
-      matches = true;
+    std::optional<double> fill_price = std::nullopt;
+    if (order.outcome == outcome && order.side != taker_side && order.price <= price) {
+      fill_price = order.price;
+    } else if (order.outcome != outcome && order.side == taker_side && order.price >= complement) {
+      fill_price = 1 - order.price;
     }
 
-    if (matches) {
+    if (fill_price) {
       order.volume_ahead -= trade_size;
 
       if (order.volume_ahead <= 0) {
-        fills.push_back({order.market_id, order.outcome, order.id, order.price, order.quantity,
-                         timestamp, order.side});
+        fills.push_back({
+            order.market_id,
+            order.outcome,
+            order.id,
+            *fill_price,
+            order.quantity,
+            timestamp,
+            order.side,
+        });
         to_remove.push_back(order.id);
-        LOG_DEBUG("Virtual Order Filled: {} @ {} (outcome: {}, qty: {})", order.id, order.price,
+        LOG_DEBUG("Virtual Order Filled: {} @ {} (outcome: {}, qty: {})", order.id, *fill_price,
                   (order.outcome == Outcome::Yes ? "YES" : "NO"), order.quantity);
       } else {
         LOG_DEBUG("Virtual Order {} queue update: volume_ahead now {}", order.id,
