@@ -1,21 +1,29 @@
-BUILD_DIR = build
+BUILD_DIR_DEBUG = build/debug
+BUILD_DIR_RELEASE = build/release
 BUILD_TYPE ?= Debug
+BUILD_TYPE_LC := $(shell printf '%s' '$(BUILD_TYPE)' | tr A-Z a-z | cut -c 1-3)
 EXECUTABLE = polybench
 RUN_CONFIG ?= config.example.json
 BENCH_FILTER ?= 
+
+ifeq ($(BUILD_TYPE_LC),rel)
+    BUILD_DIR = $(BUILD_DIR_RELEASE)
+else
+    BUILD_DIR = $(BUILD_DIR_DEBUG)
+endif
 
 .PHONY: all configure configure-test configure-bench build build-test bench-build run test bench clean
 
 all: build
 
 configure:
-	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DBUILD_TESTS=OFF -G Ninja
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -G Ninja
 
 configure-test:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DBUILD_TESTS=ON -G Ninja
 
 configure-bench:
-	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DBUILD_BENCHMARKS=ON -G Ninja
+	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=Release -DBUILD_BENCHMARKS=ON -G Ninja
 
 build: configure
 	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
@@ -24,7 +32,7 @@ build-test: configure-test
 	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
 
 bench-build: configure-bench
-	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
+	cmake --build $(BUILD_DIR_RELEASE) --parallel $(shell nproc)
 
 run: build
 	./$(BUILD_DIR)/$(EXECUTABLE) --config $(RUN_CONFIG)
@@ -34,10 +42,10 @@ test: build-test
 
 bench: bench-build
 ifneq ($(BENCH_FILTER),)
-	./$(BUILD_DIR)/polybench_benchmarks --benchmark_filter="$(BENCH_FILTER)"
+	./$(BUILD_DIR_RELEASE)/polybench_benchmarks --benchmark_filter="$(BENCH_FILTER)"
 else
-	./$(BUILD_DIR)/polybench_benchmarks
+	./$(BUILD_DIR_RELEASE)/polybench_benchmarks
 endif
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf build/
