@@ -2,6 +2,7 @@
 
 #define LOGGER_NAME "Exchange"
 #include "logger.hpp"
+#include "types/small_vector.hpp"
 
 MarketBook* Exchange::get_book(const MarketId& market_id) {
   if (!books_) return nullptr;
@@ -43,7 +44,7 @@ void Exchange::cancel_order(const MarketId& market_id, uint64_t order_id) {
   auto* book = get_book(market_id);
   if (!book) return;
 
-  book->remove_virtual_order(order_id);
+  book->remove_virtual_order(market_id, order_id);
   LOG_DEBUG("Order Cancelled: {} (market: {})", order_id, market_id);
 }
 
@@ -149,7 +150,7 @@ void Exchange::add_maker_order(const Order& order) {
             (order.outcome == Outcome::Yes ? "YES" : "NO"), volume_ahead);
 }
 
-std::vector<FillReport> Exchange::process_trade(const LastTradeMessage& trade) {
+SmallVector<FillReport, 8> Exchange::process_trade(const LastTradeMessage& trade) {
   auto* book = get_book(trade.market);
   if (!book) return {};
 
@@ -168,21 +169,22 @@ std::vector<FillReport> Exchange::process_trade(const LastTradeMessage& trade) {
                                trade.timestamp);
 }
 
-std::vector<FillReport> Exchange::process_virtual_fills(const MarketId& market_id, Outcome outcome,
-                                                        double price, Side taker_side,
-                                                        double trade_size, uint64_t timestamp) {
+SmallVector<FillReport, 8> Exchange::process_virtual_fills(const MarketId& market_id,
+                                                           Outcome outcome, double price,
+                                                           Side taker_side, double trade_size,
+                                                           uint64_t timestamp) {
   auto* book = get_book(market_id);
   if (!book) return {};
 
-  std::vector<FillReport> fills;
-  auto& virtual_orders = book->get_virtual_orders();
+  if (!book->has_virtual_orders(market_id)) return {};
+
+  SmallVector<FillReport, 8> fills;
+  SmallVector<uint64_t, 8> to_remove;
+
+  auto& virtual_orders = book->get_virtual_orders(market_id);
   double complement = polymarket::complement_price(price);
 
-  std::vector<uint64_t> to_remove;
-
   for (auto& order : virtual_orders) {
-    if (order.market_id != market_id) continue;
-
     std::optional<double> fill_price = std::nullopt;
     if (order.outcome == outcome && order.side != taker_side && order.price <= price) {
       fill_price = order.price;
@@ -213,8 +215,9 @@ std::vector<FillReport> Exchange::process_virtual_fills(const MarketId& market_i
     }
   }
 
-  for (uint64_t id : to_remove) {
-    book->remove_virtual_order(id);
+  if (!to_remove.empty()) {
+    std::vector<uint64_t> ids_vec(to_remove.begin(), to_remove.end());
+    book->remove_virtual_orders(market_id, ids_vec);
   }
 
   return fills;

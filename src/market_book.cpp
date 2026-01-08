@@ -1,6 +1,7 @@
 #include "market_book.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 void MarketBook::register_asset(AssetId asset_id, Outcome outcome) {
   asset_outcomes_[asset_id] = outcome;
@@ -87,11 +88,46 @@ double MarketBook::get_no_ask_depth(double price) const noexcept {
   return it != no_asks_.end() ? it->second : 0.0;
 }
 
-void MarketBook::add_virtual_order(const VirtualOrder& order) { virtual_orders_.push_back(order); }
+void MarketBook::add_virtual_order(const VirtualOrder& order) {
+  virtual_orders_[order.market_id].push_back(order);
+}
 
-void MarketBook::remove_virtual_order(uint64_t order_id) {
-  virtual_orders_.erase(
-      std::remove_if(virtual_orders_.begin(), virtual_orders_.end(),
-                     [order_id](const VirtualOrder& o) { return o.id == order_id; }),
-      virtual_orders_.end());
+void MarketBook::remove_virtual_order(const MarketId& market_id, uint64_t order_id) {
+  auto it = virtual_orders_.find(market_id);
+  if (it == virtual_orders_.end()) return;
+
+  auto& orders = it->second;
+  orders.erase(std::remove_if(orders.begin(), orders.end(),
+                              [order_id](const VirtualOrder& o) { return o.id == order_id; }),
+               orders.end());
+}
+
+void MarketBook::remove_virtual_orders(const MarketId& market_id,
+                                       const std::vector<uint64_t>& order_ids) {
+  auto it = virtual_orders_.find(market_id);
+  if (it == virtual_orders_.end()) return;
+
+  std::unordered_set<uint64_t> ids_to_remove(order_ids.begin(), order_ids.end());
+
+  auto& orders = it->second;
+  orders.erase(std::remove_if(orders.begin(), orders.end(),
+                              [&ids_to_remove](const VirtualOrder& o) {
+                                return ids_to_remove.count(o.id) > 0;
+                              }),
+               orders.end());
+}
+
+std::vector<VirtualOrder>& MarketBook::get_virtual_orders(const MarketId& market_id) {
+  return virtual_orders_[market_id];
+}
+
+const std::vector<VirtualOrder>* MarketBook::get_virtual_orders(const MarketId& market_id) const {
+  auto it = virtual_orders_.find(market_id);
+  if (it == virtual_orders_.end()) return nullptr;
+  return &it->second;
+}
+
+bool MarketBook::has_virtual_orders(const MarketId& market_id) const {
+  auto it = virtual_orders_.find(market_id);
+  return it != virtual_orders_.end() && !it->second.empty();
 }

@@ -30,9 +30,11 @@ class MarketBook {
   double get_no_ask_depth(double price) const noexcept;
 
   void add_virtual_order(const VirtualOrder& order);
-  void remove_virtual_order(uint64_t order_id);
-  std::vector<VirtualOrder>& get_virtual_orders() { return virtual_orders_; }
-  const std::vector<VirtualOrder>& get_virtual_orders() const { return virtual_orders_; }
+  void remove_virtual_order(const MarketId& market_id, uint64_t order_id);
+  void remove_virtual_orders(const MarketId& market_id, const std::vector<uint64_t>& order_ids);
+  std::vector<VirtualOrder>& get_virtual_orders(const MarketId& market_id);
+  const std::vector<VirtualOrder>* get_virtual_orders(const MarketId& market_id) const;
+  bool has_virtual_orders(const MarketId& market_id) const;
 
  private:
   std::unordered_map<AssetId, Outcome> asset_outcomes_;
@@ -45,5 +47,5 @@ class MarketBook {
   std::map<double, double> no_bids_;
   std::map<double, double> no_asks_;
 
-  std::vector<VirtualOrder> virtual_orders_;
+  std::unordered_map<MarketId, std::vector<VirtualOrder>> virtual_orders_;
 };

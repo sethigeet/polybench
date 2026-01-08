@@ -120,7 +120,7 @@ class ExchangeWithVirtualOrdersBenchmark : public benchmark::Fixture {
 
   void TearDown(const ::benchmark::State&) override {
     auto& book = books[market_id];
-    auto& vos = book.get_virtual_orders();
+    auto& vos = book.get_virtual_orders(market_id);
     vos.clear();
     for (int i = 0; i < 20; ++i) {
       VirtualOrder vo;
@@ -142,7 +142,7 @@ BENCHMARK_DEFINE_F(ExchangeWithVirtualOrdersBenchmark, BM_ProcessTrade_WithVirtu
   for (auto _ : state) {
     state.PauseTiming();
     auto& book = books[market_id];
-    auto& vos = book.get_virtual_orders();
+    auto& vos = book.get_virtual_orders(market_id);
     vos.clear();
     for (int i = 0; i < 20; ++i) {
       VirtualOrder vo;

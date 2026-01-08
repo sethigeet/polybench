@@ -3,10 +3,10 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "market_book.hpp"
 #include "types/common.hpp"
+#include "types/small_vector.hpp"
 
 namespace polymarket {
 constexpr double MIN_PRICE = 0.01;
@@ -32,7 +32,7 @@ class Exchange {
   std::optional<FillReport> submit_order(const Order& order);
   void cancel_order(const MarketId& market_id, uint64_t order_id);
 
-  std::vector<FillReport> process_trade(const LastTradeMessage& trade);
+  SmallVector<FillReport, 8> process_trade(const LastTradeMessage& trade);
 
  private:
   std::unordered_map<MarketId, MarketBook>* books_ = nullptr;
@@ -41,7 +41,7 @@ class Exchange {
 
   std::optional<FillReport> try_fill_taker(const Order& order);
   void add_maker_order(const Order& order);
-  std::vector<FillReport> process_virtual_fills(const MarketId& market_id, Outcome outcome,
-                                                double price, Side taker_side, double trade_size,
-                                                uint64_t timestamp);
+  SmallVector<FillReport, 8> process_virtual_fills(const MarketId& market_id, Outcome outcome,
+                                                   double price, Side taker_side,
+                                                   double trade_size, uint64_t timestamp);
 };

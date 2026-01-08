@@ -145,7 +145,7 @@ TEST_F(ExchangeTest, MakerOrderQueued) {
 
   // Check virtual order was added
   auto& book = books[market_id];
-  auto& virtual_orders = book.get_virtual_orders();
+  auto& virtual_orders = book.get_virtual_orders(market_id);
   ASSERT_EQ(virtual_orders.size(), 1);
   EXPECT_EQ(virtual_orders[0].id, 3);
   EXPECT_EQ(virtual_orders[0].price, 0.51);
@@ -166,10 +166,10 @@ TEST_F(ExchangeTest, CancelOrder) {
   exchange.submit_order(order);
 
   auto& book = books[market_id];
-  ASSERT_EQ(book.get_virtual_orders().size(), 1);
+  ASSERT_EQ(book.get_virtual_orders(market_id).size(), 1);
 
   exchange.cancel_order(market_id, 4);
-  EXPECT_TRUE(book.get_virtual_orders().empty());
+  EXPECT_TRUE(book.get_virtual_orders(market_id).empty());
 }
 
 TEST_F(ExchangeTest, ProcessTradeFillsVirtualOrder) {
@@ -188,10 +188,10 @@ TEST_F(ExchangeTest, ProcessTradeFillsVirtualOrder) {
   exchange.submit_order(order);
 
   auto& book = books[market_id];
-  ASSERT_EQ(book.get_virtual_orders().size(), 1);
+  ASSERT_EQ(book.get_virtual_orders(market_id).size(), 1);
   // Volume ahead = YES bid depth at 0.54 (0) + NO ask depth at complement 0.46 (0) = 0
   // Since there's no liquidity at these prices, volume_ahead is 0
-  double volume_ahead = book.get_virtual_orders()[0].volume_ahead;
+  double volume_ahead = book.get_virtual_orders(market_id)[0].volume_ahead;
 
   // Simulate a trade at the same price that would match our order
   LastTradeMessage trade;

@@ -118,8 +118,9 @@ TEST_F(MarketBookTest, BestBidAskEmpty) {
 }
 
 TEST_F(MarketBookTest, VirtualOrderAddAndRemove) {
+  MarketId mid("market-1");
   VirtualOrder order;
-  order.market_id = MarketId("market-1");
+  order.market_id = mid;
   order.outcome = Outcome::Yes;
   order.id = 123;
   order.price = 0.50;
@@ -130,17 +131,18 @@ TEST_F(MarketBookTest, VirtualOrderAddAndRemove) {
 
   book.add_virtual_order(order);
 
-  auto& orders = book.get_virtual_orders();
+  auto& orders = book.get_virtual_orders(mid);
   ASSERT_EQ(orders.size(), 1);
   EXPECT_EQ(orders[0].id, 123);
   EXPECT_EQ(orders[0].price, 0.50);
 
-  book.remove_virtual_order(123);
-  EXPECT_TRUE(book.get_virtual_orders().empty());
+  book.remove_virtual_order(mid, 123);
+  EXPECT_TRUE(book.get_virtual_orders(mid).empty());
 }
 
 TEST_F(MarketBookTest, RemoveNonExistentVirtualOrder) {
+  MarketId mid("market-1");
   // Should not throw or crash
-  book.remove_virtual_order(999);
-  EXPECT_TRUE(book.get_virtual_orders().empty());
+  book.remove_virtual_order(mid, 999);
+  EXPECT_TRUE(book.get_virtual_orders(mid).empty());
 }

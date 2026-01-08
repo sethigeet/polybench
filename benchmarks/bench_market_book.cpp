@@ -133,7 +133,7 @@ BENCHMARK_DEFINE_F(MarketBookBenchmark, BM_AddRemoveVirtualOrder)(benchmark::Sta
     vo.placed_at = 5000;
 
     book.add_virtual_order(vo);
-    book.remove_virtual_order(vo.id);
+    book.remove_virtual_order(kMarketId, vo.id);
   }
 }
 BENCHMARK_REGISTER_F(MarketBookBenchmark, BM_AddRemoveVirtualOrder);
