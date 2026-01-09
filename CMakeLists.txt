@@ -86,6 +86,12 @@ if(BUILD_TESTS)
 
     enable_testing()
 
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+      # Adds -fprofile-arcs -ftest-coverage and links with --coverage
+      add_compile_options(--coverage -O0 -g)
+      add_link_options(--coverage)
+    endif()
+
     add_executable(polybench_tests
         tests/test_fixed_string.cpp
         tests/test_small_vector.cpp

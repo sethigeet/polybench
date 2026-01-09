@@ -12,7 +12,7 @@ else
     BUILD_DIR = $(BUILD_DIR_DEBUG)
 endif
 
-.PHONY: all configure configure-test configure-bench build build-test bench-build run test bench clean
+.PHONY: all configure configure-test configure-bench build build-test bench-build run test bench clean coverage
 
 all: build
 
@@ -24,16 +24,17 @@ configure-test:
 
 configure-bench:
 #  Do not use debug build for benchmarks
- ifeq ($(BUILD_TYPE), Debug)
-	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=Release -DBUILD_BENCHMARKS=ON -G Ninja
- else
-	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DBUILD_BENCHMARKS=ON -G Ninja
- endif
+  ifeq ($(BUILD_TYPE), Debug)
+		cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=Release -DBUILD_BENCHMARKS=ON -G Ninja
+  else
+		cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DBUILD_BENCHMARKS=ON -G Ninja
+  endif
 
 build: configure
 	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
 
 build-test: configure-test
+	find $(BUILD_DIR) -iname '*.gcno' -delete && \
 	cmake --build $(BUILD_DIR) --parallel $(shell nproc)
 
 bench-build: configure-bench
@@ -43,7 +44,14 @@ run: build
 	./$(BUILD_DIR)/$(EXECUTABLE) --config $(RUN_CONFIG)
 
 test: build-test
-	cd $(BUILD_DIR) && ctest --output-on-failure
+	cd $(BUILD_DIR) && \
+	find . -iname '*.gcda' -delete && \
+	ctest --output-on-failure
+
+coverage:
+	mkdir -p coverage && \
+	uvx gcovr -r . --filter src $(BUILD_DIR) --html --html-details -o coverage/coverage.html && \
+	python3 -m http.server -d coverage 8000
 
 bench: bench-build
 ifneq ($(BENCH_FILTER),)
@@ -54,3 +62,4 @@ endif
 
 clean:
 	rm -rf build/
+	rm -rf coverage/
