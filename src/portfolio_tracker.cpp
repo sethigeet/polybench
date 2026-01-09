@@ -1,7 +1,8 @@
 #include "portfolio_tracker.hpp"
 
 #include <cmath>
-#include <numeric>
+
+PortfolioTracker::PortfolioTracker() { equity_history_.reserve(kMaxEquityHistory); }
 
 void PortfolioTracker::on_fill(const FillReport& fill) {
   PositionKey key{fill.market_id, fill.outcome};
@@ -139,35 +140,43 @@ double PortfolioTracker::get_unrealized_pnl() const {
   return unrealized;
 }
 
-void PortfolioTracker::record_equity_snapshot() { equity_history_.push_back(get_total_pnl()); }
+void PortfolioTracker::record_equity_snapshot() {
+  double equity = get_total_pnl();
+
+  // Update Welford's algorithm for incremental Sharpe ratio
+  if (returns_count_ > 0) {
+    double ret = equity - prev_equity_;
+    ++returns_count_;
+    double delta = ret - returns_mean_;
+    returns_mean_ += delta / static_cast<double>(returns_count_);
+    double delta2 = ret - returns_mean_;
+    returns_m2_ += delta * delta2;
+  } else {
+    returns_count_ = 1;
+  }
+  prev_equity_ = equity;
+
+  // Store equity with circular buffer behavior
+  if (equity_history_.size() < kMaxEquityHistory) {
+    equity_history_.push_back(equity);
+  } else {
+    equity_history_[equity_write_idx_] = equity;
+    equity_write_idx_ = (equity_write_idx_ + 1) % kMaxEquityHistory;
+  }
+}
 
 double PortfolioTracker::get_sharpe_ratio() const {
-  if (equity_history_.size() < 2) {
+  if (returns_count_ < 2) {
     return 0.0;  // Not enough data
   }
 
-  // Calculate returns from equity changes
-  std::vector<double> returns;
-  returns.reserve(equity_history_.size() - 1);
-
-  for (size_t i = 1; i < equity_history_.size(); ++i) {
-    returns.push_back(equity_history_[i] - equity_history_[i - 1]);
-  }
-
-  // Mean return
-  double sum = std::accumulate(returns.begin(), returns.end(), 0.0);
-  double mean = sum / returns.size();
-
-  // Standard deviation
-  double sq_sum = 0.0;
-  for (double r : returns) {
-    sq_sum += (r - mean) * (r - mean);
-  }
-  double std_dev = std::sqrt(sq_sum / returns.size());
+  // Welford's algorithm gives us variance directly
+  double variance = returns_m2_ / static_cast<double>(returns_count_);
+  double std_dev = std::sqrt(variance);
 
   if (std_dev == 0.0) {
     return 0.0;  // No volatility
   }
 
-  return mean / std_dev;
+  return returns_mean_ / std_dev;
 }
