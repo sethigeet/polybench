@@ -5,9 +5,9 @@
 #include <optional>
 #include <string>
 #include <variant>
-#include <vector>
 
 #include "types/polymarket.hpp"
+#include "types/small_vector.hpp"
 
 using PolymarketMessage = std::variant<BookMessage, PriceChangeMessage, LastTradeMessage,
                                        TickSizeChangeMessage, MarketResolvedMessage>;
@@ -16,7 +16,7 @@ class JsonParser {
  public:
   JsonParser();
 
-  std::vector<PolymarketMessage> parse(const std::string& json_str);
+  size_t parse(const std::string& json_str, SmallVector<PolymarketMessage, 2>& out);
 
  private:
   simdjson::ondemand::parser parser_;

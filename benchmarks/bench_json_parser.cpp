@@ -90,8 +90,10 @@ static const std::string kLastTradeMessageJson = R"({
 
 static void BM_ParseBookMessage(benchmark::State& state) {
   JsonParser parser;
+  SmallVector<PolymarketMessage, 2> messages;
   for (auto _ : state) {
-    auto messages = parser.parse(kBookMessageJson);
+    messages.clear();
+    parser.parse(kBookMessageJson, messages);
     benchmark::DoNotOptimize(messages);
   }
 }
@@ -99,8 +101,10 @@ BENCHMARK(BM_ParseBookMessage);
 
 static void BM_ParsePriceChangeMessage(benchmark::State& state) {
   JsonParser parser;
+  SmallVector<PolymarketMessage, 2> messages;
   for (auto _ : state) {
-    auto messages = parser.parse(kPriceChangeMessageJson);
+    messages.clear();
+    parser.parse(kPriceChangeMessageJson, messages);
     benchmark::DoNotOptimize(messages);
   }
 }
@@ -108,8 +112,10 @@ BENCHMARK(BM_ParsePriceChangeMessage);
 
 static void BM_ParseLastTradeMessage(benchmark::State& state) {
   JsonParser parser;
+  SmallVector<PolymarketMessage, 2> messages;
   for (auto _ : state) {
-    auto messages = parser.parse(kLastTradeMessageJson);
+    messages.clear();
+    parser.parse(kLastTradeMessageJson, messages);
     benchmark::DoNotOptimize(messages);
   }
 }
@@ -125,8 +131,10 @@ static std::string create_batch_json() {
 static void BM_ParseBatchMessages(benchmark::State& state) {
   JsonParser parser;
   const std::string batch = create_batch_json();
+  SmallVector<PolymarketMessage, 2> messages;
   for (auto _ : state) {
-    auto messages = parser.parse(batch);
+    messages.clear();
+    parser.parse(batch, messages);
     benchmark::DoNotOptimize(messages);
   }
 }

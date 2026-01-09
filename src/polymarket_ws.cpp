@@ -180,14 +180,15 @@ void PolymarketWS::unsubscribe(const R& asset_ids) {
 void PolymarketWS::handle_message(const std::string& message) {
   LOG_DEBUG("Received message ({} bytes)", message.length());
 
-  auto parsed = json_parser_.parse(message);
+  SmallVector<PolymarketMessage, 2> parsed;
+  size_t count = json_parser_.parse(message, parsed);
   for (auto& msg : parsed) {
     message_buffer_.push_wait(std::move(msg), []() {
       LOG_WARN("Ring buffer full - experiencing backpressure from slow consumer");
     });
   }
-  if (!parsed.empty()) {
-    LOG_DEBUG("Queued {} messages (buffer size: {})", parsed.size(), message_buffer_.size());
+  if (count > 0) {
+    LOG_DEBUG("Queued {} messages (buffer size: {})", count, message_buffer_.size());
   }
 }
 

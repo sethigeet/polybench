@@ -6,6 +6,12 @@
 class JsonParserTest : public ::testing::Test {
  protected:
   JsonParser parser;
+
+  SmallVector<PolymarketMessage, 2> parse(const std::string& json) {
+    SmallVector<PolymarketMessage, 2> messages;
+    parser.parse(json, messages);
+    return messages;
+  }
 };
 
 TEST_F(JsonParserTest, ParseBookMessage) {
@@ -23,7 +29,7 @@ TEST_F(JsonParserTest, ParseBookMessage) {
     "timestamp": "1704067200000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   ASSERT_TRUE(std::holds_alternative<BookMessage>(messages[0]));
 
@@ -62,7 +68,7 @@ TEST_F(JsonParserTest, ParsePriceChangeMessage) {
     "timestamp": "1704067200000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   ASSERT_TRUE(std::holds_alternative<PriceChangeMessage>(messages[0]));
 
@@ -91,7 +97,7 @@ TEST_F(JsonParserTest, ParseLastTradeMessage) {
     "timestamp": "1704067200000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   ASSERT_TRUE(std::holds_alternative<LastTradeMessage>(messages[0]));
 
@@ -115,7 +121,7 @@ TEST_F(JsonParserTest, ParseTickSizeChangeMessage) {
     "timestamp": "1704067200000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   ASSERT_TRUE(std::holds_alternative<TickSizeChangeMessage>(messages[0]));
 
@@ -137,7 +143,7 @@ TEST_F(JsonParserTest, ParseMarketResolvedMessage) {
     "timestamp": "1704067200000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   ASSERT_TRUE(std::holds_alternative<MarketResolvedMessage>(messages[0]));
 
@@ -172,7 +178,7 @@ TEST_F(JsonParserTest, ParseArrayOfMessages) {
     }
   ])";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 2);
 
   ASSERT_TRUE(std::holds_alternative<LastTradeMessage>(messages[0]));
@@ -191,7 +197,7 @@ TEST_F(JsonParserTest, UnknownEventTypeReturnsEmpty) {
     "data": "something"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   EXPECT_TRUE(messages.empty());
 }
 
@@ -204,7 +210,7 @@ TEST_F(JsonParserTest, BestBidAskEventIgnored) {
     "ask": "0.55"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   EXPECT_TRUE(messages.empty());
 }
 
@@ -214,13 +220,13 @@ TEST_F(JsonParserTest, NewMarketEventIgnored) {
     "market": "market-new"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   EXPECT_TRUE(messages.empty());
 }
 
 TEST_F(JsonParserTest, InvalidJsonReturnsEmpty) {
   std::string json = "{ invalid json }}}";
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   EXPECT_TRUE(messages.empty());
 }
 
@@ -236,7 +242,7 @@ TEST_F(JsonParserTest, ParseSideBuy) {
     "timestamp": "1000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   auto& msg = std::get<LastTradeMessage>(messages[0]);
   EXPECT_EQ(msg.side, Side::Buy);
@@ -254,7 +260,7 @@ TEST_F(JsonParserTest, ParseSideSell) {
     "timestamp": "1000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   auto& msg = std::get<LastTradeMessage>(messages[0]);
   EXPECT_EQ(msg.side, Side::Sell);
@@ -271,7 +277,7 @@ TEST_F(JsonParserTest, ParseOutcomeYes) {
     "timestamp": "1000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   auto& msg = std::get<MarketResolvedMessage>(messages[0]);
   EXPECT_EQ(msg.winning_outcome, Outcome::Yes);
@@ -288,7 +294,7 @@ TEST_F(JsonParserTest, ParseOutcomeNo) {
     "timestamp": "1000"
   })";
 
-  auto messages = parser.parse(json);
+  auto messages = parse(json);
   ASSERT_EQ(messages.size(), 1);
   auto& msg = std::get<MarketResolvedMessage>(messages[0]);
   EXPECT_EQ(msg.winning_outcome, Outcome::No);

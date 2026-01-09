@@ -8,7 +8,7 @@
 
 JsonParser::JsonParser() : padded_buffer_(1024) {}
 
-std::vector<PolymarketMessage> JsonParser::parse(const std::string& json_str) {
+size_t JsonParser::parse(const std::string& json_str, SmallVector<PolymarketMessage, 2>& out) {
   if (padded_buffer_.size() < json_str.size()) [[unlikely]] {
     padded_buffer_ = simdjson::padded_string(json_str.size() * 2);
   }
@@ -18,12 +18,11 @@ std::vector<PolymarketMessage> JsonParser::parse(const std::string& json_str) {
   auto doc_result = parser_.iterate(padded_buffer_.data(), json_str.size(), padded_buffer_.size());
   if (doc_result.error()) [[unlikely]] {
     LOG_ERROR("Failed to parse message: {}", simdjson::error_message(doc_result.error()));
-    return {};
+    return 0;
   }
 
   auto doc = std::move(doc_result).value();
-  std::vector<PolymarketMessage> messages;
-  messages.reserve(1);
+  size_t count = 0;
 
   auto type_result = doc.type().value();
   if (type_result == simdjson::ondemand::json_type::array) {
@@ -31,17 +30,19 @@ std::vector<PolymarketMessage> JsonParser::parse(const std::string& json_str) {
     for (auto element : arr_result) {
       auto obj_result = element.get_object().value();
       if (auto msg = parse_object(obj_result); msg.has_value()) {
-        messages.push_back(std::move(*msg));
+        out.push_back(std::move(*msg));
+        ++count;
       }
     }
   } else {
     auto obj_result = doc.get_object().value();
     if (auto msg = parse_object(obj_result); msg.has_value()) {
-      messages.push_back(std::move(*msg));
+      out.push_back(std::move(*msg));
+      ++count;
     }
   }
 
-  return messages;
+  return count;
 }
 
 std::optional<PolymarketMessage> JsonParser::parse_object(simdjson::ondemand::object& obj) {
