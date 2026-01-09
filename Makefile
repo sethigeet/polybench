@@ -12,7 +12,7 @@ else
     BUILD_DIR = $(BUILD_DIR_DEBUG)
 endif
 
-.PHONY: all configure configure-test configure-bench build build-test bench-build run test bench clean coverage
+.PHONY: all configure configure-test configure-bench build build-test bench-build run test bench clean coverage pgo-generate pgo-build pgo-clean
 
 all: build
 
@@ -63,3 +63,21 @@ endif
 clean:
 	rm -rf build/
 	rm -rf coverage/
+
+# Profile-Guided Optimization (PGO) workflow
+# Step 1: Build with instrumentation
+pgo-generate:
+	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=Release -DPGO_GENERATE=ON -G Ninja
+	cmake --build $(BUILD_DIR_RELEASE) --parallel $(shell nproc)
+	@echo "PGO Step 1 complete. Run your workload, then run 'make pgo-build'"
+
+# Step 2: Build optimized binary using profile data
+pgo-build:
+	cmake -S . -B $(BUILD_DIR_RELEASE) -DCMAKE_BUILD_TYPE=Release -DPGO_USE=ON -G Ninja
+	cmake --build $(BUILD_DIR_RELEASE) --clean-first --parallel $(shell nproc)
+	@echo "PGO build complete. Binary: $(BUILD_DIR_RELEASE)/$(EXECUTABLE)"
+
+# Clean profile data
+pgo-clean:
+	rm -rf $(BUILD_DIR_RELEASE)/pgo
+	@echo "PGO profile data cleaned"

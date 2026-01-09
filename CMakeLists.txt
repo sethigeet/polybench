@@ -8,6 +8,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_definitions(-DSOME_DEFINITION)
 
+# Profile-Guided Optimization (PGO) support
+option(PGO_GENERATE "Build with PGO instrumentation (run this build to generate profile data)" OFF)
+option(PGO_USE "Build using PGO profile data (run after PGO_GENERATE build has collected data)" OFF)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  if(PGO_GENERATE)
+    message(STATUS "PGO: Generating profile instrumentation")
+    add_compile_options(-fprofile-generate=${CMAKE_BINARY_DIR}/pgo)
+    add_link_options(-fprofile-generate=${CMAKE_BINARY_DIR}/pgo)
+  elseif(PGO_USE)
+    message(STATUS "PGO: Using profile data from ${CMAKE_BINARY_DIR}/pgo")
+    add_compile_options(-fprofile-use=${CMAKE_BINARY_DIR}/pgo -fprofile-correction)
+    add_link_options(-fprofile-use=${CMAKE_BINARY_DIR}/pgo)
+  endif()
+endif()
+
 include(FetchContent)
 
 set(PYBIND11_FINDPYTHON NEW)
