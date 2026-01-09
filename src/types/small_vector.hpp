@@ -237,6 +237,28 @@ class SmallVector {
     size_ = count;
   }
 
+  iterator erase(const_iterator pos) {
+    iterator p = begin() + (pos - cbegin());
+    if (p + 1 != end()) {
+      std::move(p + 1, end(), p);
+    }
+    pop_back();
+    return p;
+  }
+
+  iterator erase(const_iterator first, const_iterator last) {
+    iterator f = begin() + (first - cbegin());
+    iterator l = begin() + (last - cbegin());
+    if (f != l) {
+      iterator new_end = std::move(l, end(), f);
+      size_type to_destroy = static_cast<size_type>(end() - new_end);
+      for (size_type i = 0; i < to_destroy; ++i) {
+        pop_back();
+      }
+    }
+    return f;
+  }
+
  private:
   [[nodiscard]] bool is_using_heap() const noexcept { return heap_data_ != nullptr; }
 
