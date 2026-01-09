@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <optional>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -31,7 +32,7 @@ class MarketBook {
 
   void add_virtual_order(const VirtualOrder& order);
   void remove_virtual_order(const MarketId& market_id, uint64_t order_id);
-  void remove_virtual_orders(const MarketId& market_id, const std::vector<uint64_t>& order_ids);
+  void remove_virtual_orders(const MarketId& market_id, std::span<const uint64_t> order_ids);
   std::vector<VirtualOrder>& get_virtual_orders(const MarketId& market_id);
   const std::vector<VirtualOrder>* get_virtual_orders(const MarketId& market_id) const;
   bool has_virtual_orders(const MarketId& market_id) const;

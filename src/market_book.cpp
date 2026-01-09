@@ -25,11 +25,11 @@ void MarketBook::on_book_message(const BookMessage& msg) {
   asks.clear();
 
   for (const auto& bid : msg.bids) {
-    bids[bid.price] = bid.size;
+    bids.emplace_hint(bids.end(), bid.price, bid.size);
   }
 
   for (const auto& ask : msg.asks) {
-    asks[ask.price] = ask.size;
+    asks.emplace_hint(asks.end(), ask.price, ask.size);
   }
 }
 
@@ -103,18 +103,28 @@ void MarketBook::remove_virtual_order(const MarketId& market_id, uint64_t order_
 }
 
 void MarketBook::remove_virtual_orders(const MarketId& market_id,
-                                       const std::vector<uint64_t>& order_ids) {
+                                       std::span<const uint64_t> order_ids) {
   auto it = virtual_orders_.find(market_id);
   if (it == virtual_orders_.end()) return;
 
-  std::unordered_set<uint64_t> ids_to_remove(order_ids.begin(), order_ids.end());
-
   auto& orders = it->second;
-  orders.erase(std::remove_if(orders.begin(), orders.end(),
-                              [&ids_to_remove](const VirtualOrder& o) {
-                                return ids_to_remove.count(o.id) > 0;
-                              }),
-               orders.end());
+
+  // For small batches (typical case), linear search is faster than hash set construction
+  if (order_ids.size() <= 8) {
+    orders.erase(std::remove_if(orders.begin(), orders.end(),
+                                [&order_ids](const VirtualOrder& o) {
+                                  return std::find(order_ids.begin(), order_ids.end(), o.id) !=
+                                         order_ids.end();
+                                }),
+                 orders.end());
+  } else {
+    std::unordered_set<uint64_t> ids_to_remove(order_ids.begin(), order_ids.end());
+    orders.erase(std::remove_if(orders.begin(), orders.end(),
+                                [&ids_to_remove](const VirtualOrder& o) {
+                                  return ids_to_remove.count(o.id) > 0;
+                                }),
+                 orders.end());
+  }
 }
 
 std::vector<VirtualOrder>& MarketBook::get_virtual_orders(const MarketId& market_id) {

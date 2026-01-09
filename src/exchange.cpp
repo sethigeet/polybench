@@ -216,8 +216,8 @@ SmallVector<FillReport, 8> Exchange::process_virtual_fills(const MarketId& marke
   }
 
   if (!to_remove.empty()) {
-    std::vector<uint64_t> ids_vec(to_remove.begin(), to_remove.end());
-    book->remove_virtual_orders(market_id, ids_vec);
+    book->remove_virtual_orders(market_id,
+                                std::span<const uint64_t>(to_remove.data(), to_remove.size()));
   }
 
   return fills;
