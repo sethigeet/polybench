@@ -55,6 +55,13 @@ void Engine::run() {
 
   ws_->start();
 
+  constexpr int kMaxSpinCount = 100;
+  constexpr auto kMinSleep = std::chrono::microseconds(100);
+  constexpr auto kMaxSleep = std::chrono::microseconds(10000);
+
+  int empty_count = 0;
+  auto current_sleep = kMinSleep;
+
   // Main event loop - poll messages from WebSocket and process them
   // This ensures Python callbacks run on the main thread, not the WS thread
   SmallVector<PolymarketMessage, kMessageBatchSize> messages;
@@ -63,9 +70,20 @@ void Engine::run() {
     ws_->poll_messages(messages, kMessageBatchSize);
 
     if (messages.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      // Adaptive backoff: spin first, then sleep with exponential backoff
+      if (++empty_count < kMaxSpinCount) {
+        std::this_thread::yield();
+      } else {
+        std::this_thread::sleep_for(current_sleep);
+        if (current_sleep < kMaxSleep) {
+          current_sleep = std::min(current_sleep * 2, kMaxSleep);
+        }
+      }
       continue;
     }
+
+    empty_count = 0;
+    current_sleep = kMinSleep;
 
     LOG_DEBUG("Polled {} messages from buffer", messages.size());
     for (const auto& msg : messages) {
