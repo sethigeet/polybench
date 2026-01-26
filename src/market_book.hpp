@@ -1,8 +1,9 @@
 #pragma once
-#include <map>
+#include <algorithm>
 #include <optional>
 #include <span>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "types/common.hpp"
@@ -40,13 +41,26 @@ class MarketBook {
  private:
   std::unordered_map<AssetId, Outcome> asset_outcomes_;
 
-  // YES outcome order book (price -> quantity)
-  std::map<double, double> yes_bids_;  // Higher price is better (rbegin)
-  std::map<double, double> yes_asks_;  // Lower price is better (begin)
+  // Price level: (price, quantity)
+  using PriceLevel = std::pair<double, double>;
+
+  // YES outcome order book
+  std::vector<PriceLevel> yes_bids_;  // Sorted descending by price (best bid at front)
+  std::vector<PriceLevel> yes_asks_;  // Sorted ascending by price (best ask at front)
 
   // NO outcome order book
-  std::map<double, double> no_bids_;
-  std::map<double, double> no_asks_;
+  std::vector<PriceLevel> no_bids_;  // Sorted descending by price
+  std::vector<PriceLevel> no_asks_;  // Sorted ascending by price
+
+  static auto find_level(std::vector<PriceLevel>& levels, double price) {
+    return std::find_if(levels.begin(), levels.end(),
+                        [price](const PriceLevel& l) { return l.first == price; });
+  }
+
+  static auto find_level(const std::vector<PriceLevel>& levels, double price) {
+    return std::find_if(levels.begin(), levels.end(),
+                        [price](const PriceLevel& l) { return l.first == price; });
+  }
 
   std::unordered_map<MarketId, std::vector<VirtualOrder>> virtual_orders_;
 };

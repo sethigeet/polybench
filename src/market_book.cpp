@@ -24,13 +24,23 @@ void MarketBook::on_book_message(const BookMessage& msg) {
   bids.clear();
   asks.clear();
 
+  // Reserve space for efficiency
+  bids.reserve(msg.bids.size());
+  asks.reserve(msg.asks.size());
+
   for (const auto& bid : msg.bids) {
-    bids.emplace_hint(bids.end(), bid.price, bid.size);
+    bids.emplace_back(bid.price, bid.size);
   }
+  // Sort bids descending (highest price first)
+  std::sort(bids.begin(), bids.end(),
+            [](const auto& a, const auto& b) { return a.first > b.first; });
 
   for (const auto& ask : msg.asks) {
-    asks.emplace_hint(asks.end(), ask.price, ask.size);
+    asks.emplace_back(ask.price, ask.size);
   }
+  // Sort asks ascending (lowest price first)
+  std::sort(asks.begin(), asks.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
 }
 
 void MarketBook::on_price_change(const PriceChange& change) {
@@ -40,51 +50,70 @@ void MarketBook::on_price_change(const PriceChange& change) {
 
   auto& book = (change.side == Side::Buy) ? ((outcome == Outcome::Yes) ? yes_bids_ : no_bids_)
                                           : ((outcome == Outcome::Yes) ? yes_asks_ : no_asks_);
+  bool is_bid = (change.side == Side::Buy);
+
+  auto it = find_level(book, change.price);
 
   if (change.size <= 0) {
-    book.erase(change.price);
+    // Remove level
+    if (it != book.end()) {
+      book.erase(it);
+    }
   } else {
-    book[change.price] = change.size;
+    if (it != book.end()) {
+      // Update existing level
+      it->second = change.size;
+    } else {
+      // Insert new level maintaining sort order
+      // For bids: descending (higher price comes first)
+      // For asks: ascending (lower price comes first)
+      auto insert_pos = std::lower_bound(
+          book.begin(), book.end(), change.price,
+          [is_bid](const auto& level, double price) {
+            return is_bid ? level.first > price : level.first < price;
+          });
+      book.emplace(insert_pos, change.price, change.size);
+    }
   }
 }
 
 std::optional<double> MarketBook::get_yes_best_bid() const noexcept {
   if (yes_bids_.empty()) return std::nullopt;
-  return yes_bids_.rbegin()->first;
+  return yes_bids_.front().first;  // Sorted descending, best is at front
 }
 
 std::optional<double> MarketBook::get_yes_best_ask() const noexcept {
   if (yes_asks_.empty()) return std::nullopt;
-  return yes_asks_.begin()->first;
+  return yes_asks_.front().first;  // Sorted ascending, best is at front
 }
 
 double MarketBook::get_yes_bid_depth(double price) const noexcept {
-  auto it = yes_bids_.find(price);
+  auto it = find_level(yes_bids_, price);
   return it != yes_bids_.end() ? it->second : 0.0;
 }
 
 double MarketBook::get_yes_ask_depth(double price) const noexcept {
-  auto it = yes_asks_.find(price);
+  auto it = find_level(yes_asks_, price);
   return it != yes_asks_.end() ? it->second : 0.0;
 }
 
 std::optional<double> MarketBook::get_no_best_bid() const noexcept {
   if (no_bids_.empty()) return std::nullopt;
-  return no_bids_.rbegin()->first;
+  return no_bids_.front().first;  // Sorted descending, best is at front
 }
 
 std::optional<double> MarketBook::get_no_best_ask() const noexcept {
   if (no_asks_.empty()) return std::nullopt;
-  return no_asks_.begin()->first;
+  return no_asks_.front().first;  // Sorted ascending, best is at front
 }
 
 double MarketBook::get_no_bid_depth(double price) const noexcept {
-  auto it = no_bids_.find(price);
+  auto it = find_level(no_bids_, price);
   return it != no_bids_.end() ? it->second : 0.0;
 }
 
 double MarketBook::get_no_ask_depth(double price) const noexcept {
-  auto it = no_asks_.find(price);
+  auto it = find_level(no_asks_, price);
   return it != no_asks_.end() ? it->second : 0.0;
 }
 
