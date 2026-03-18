@@ -9,13 +9,15 @@ void MarketBook::register_asset(AssetId asset_id, Outcome outcome) {
 
 std::optional<Outcome> MarketBook::get_outcome(const AssetId& asset_id) const {
   auto it = asset_outcomes_.find(asset_id);
-  if (it == asset_outcomes_.end()) return std::nullopt;
+  if (it == asset_outcomes_.end()) [[unlikely]]
+    return std::nullopt;
   return it->second;
 }
 
 void MarketBook::on_book_message(const BookMessage& msg) {
   auto outcome_opt = get_outcome(msg.asset_id);
-  if (!outcome_opt) return;
+  if (!outcome_opt) [[unlikely]]
+    return;
   Outcome outcome = *outcome_opt;
 
   auto& bids = (outcome == Outcome::Yes) ? yes_bids_ : no_bids_;

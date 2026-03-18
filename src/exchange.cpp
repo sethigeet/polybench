@@ -5,9 +5,9 @@
 #include "types/small_vector.hpp"
 
 MarketBook* Exchange::get_book(const MarketId& market_id) {
-  if (!books_) return nullptr;
+  if (!books_) [[unlikely]] return nullptr;
   auto it = books_->find(market_id);
-  if (it == books_->end()) return nullptr;
+  if (it == books_->end()) [[unlikely]] return nullptr;
   return &it->second;
 }
 
@@ -23,7 +23,7 @@ std::optional<FillReport> Exchange::submit_order(const Order& order) {
             order.quantity, (order.side == Side::Buy ? "BUY" : "SELL"));
 
   auto* book = get_book(order.market_id);
-  if (!book) {
+  if (!book) [[unlikely]] {
     LOG_WARN("No book for market {}, cannot process order", order.market_id);
     return std::nullopt;
   }
@@ -50,7 +50,7 @@ void Exchange::cancel_order(const MarketId& market_id, uint64_t order_id) {
 
 std::optional<FillReport> Exchange::try_fill_taker(const Order& order) {
   auto* book = get_book(order.market_id);
-  if (!book) return std::nullopt;
+  if (!book) [[unlikely]] return std::nullopt;
 
   double complement = polymarket::complement_price(order.price);
 
