@@ -108,28 +108,43 @@ class Strategy {
   }
 };
 
+namespace py = pybind11;
+
 // Trampoline class for Pybind11
+// Uses manual dispatch with py::return_value_policy::reference to avoid
+// deep-copying message structs across the C++/Python boundary. Safe because
+// messages are stack-allocated in the engine and outlive the synchronous callback.
 class PyStrategy : public Strategy {
  public:
   using Strategy::Strategy;
 
   void on_book(const BookMessage &msg) override {
-    PYBIND11_OVERRIDE_PURE(void, Strategy, on_book, msg);
+    PYBIND11_OVERRIDE_PURE(void, Strategy, on_book,
+                           py::cast(msg, py::return_value_policy::reference));
   }
 
   void on_price_change(const PriceChangeMessage &msg) override {
-    PYBIND11_OVERRIDE_PURE(void, Strategy, on_price_change, msg);
+    PYBIND11_OVERRIDE_PURE(void, Strategy, on_price_change,
+                           py::cast(msg, py::return_value_policy::reference));
   }
 
   void on_trade(const LastTradeMessage &msg) override {
-    PYBIND11_OVERRIDE_PURE(void, Strategy, on_trade, msg);
+    PYBIND11_OVERRIDE_PURE(void, Strategy, on_trade,
+                           py::cast(msg, py::return_value_policy::reference));
   }
 
   void on_fill(const FillReport &fill) override {
-    PYBIND11_OVERRIDE_PURE(void, Strategy, on_fill, fill);
+    PYBIND11_OVERRIDE_PURE(void, Strategy, on_fill,
+                           py::cast(fill, py::return_value_policy::reference));
   }
 
   void on_market_resolved(const MarketResolvedMessage &msg) override {
-    PYBIND11_OVERRIDE(void, Strategy, on_market_resolved, msg);
+    py::function override =
+        py::get_override(static_cast<const Strategy *>(this), "on_market_resolved");
+    if (override) {
+      override(py::cast(msg, py::return_value_policy::reference));
+    } else {
+      Strategy::on_market_resolved(msg);
+    }
   }
 };
