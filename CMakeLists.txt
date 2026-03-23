@@ -149,4 +149,12 @@ if(BUILD_BENCHMARKS)
     )
     target_link_libraries(polybench_benchmarks PRIVATE polybench_core benchmark::benchmark)
     target_include_directories(polybench_benchmarks PRIVATE src)
+
+    add_executable(polybench_python_benchmarks
+        benchmarks/bench_main.cpp
+        benchmarks/bench_python_callback.cpp
+        src/bindings.cpp
+    )
+    target_link_libraries(polybench_python_benchmarks PRIVATE polybench_core benchmark::benchmark pybind11::embed)
+    target_include_directories(polybench_python_benchmarks PRIVATE src)
 endif()
