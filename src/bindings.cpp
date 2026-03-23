@@ -69,6 +69,33 @@ struct type_caster<SmallVector<T, N>> {
 }  // namespace detail
 }  // namespace pybind11
 
+// Mark high-frequency SmallVector types as opaque so they are exposed as
+// lazy sequence wrappers instead of eagerly converted to Python lists.
+// SmallVector<AssetId, 2> is left non-opaque (rare, small).
+PYBIND11_MAKE_OPAQUE(OrderList);
+PYBIND11_MAKE_OPAQUE(PriceChangeList);
+
+// Registers a SmallVector<T, N> as a read-only Python sequence whose elements
+// are converted lazily (on __getitem__ / __iter__) rather than eagerly to a list.
+template <typename T, size_t N>
+void bind_lazy_small_vector(py::module_ &m, const char *name) {
+  using Vec = SmallVector<T, N>;
+  py::class_<Vec>(m, name)
+      .def("__len__", [](const Vec &v) { return v.size(); })
+      .def(
+          "__getitem__",
+          [](const Vec &v, py::ssize_t i) -> const T & {
+            if (i < 0) i += static_cast<py::ssize_t>(v.size());
+            if (i < 0 || static_cast<size_t>(i) >= v.size()) throw py::index_error();
+            return v[static_cast<size_t>(i)];
+          },
+          py::return_value_policy::reference_internal)
+      .def(
+          "__iter__",
+          [](const Vec &v) { return py::make_iterator(v.begin(), v.end()); },
+          py::keep_alive<0, 1>());
+}
+
 PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
   // Logging submodule
   auto m_log = m.def_submodule("logger", "Logging utilities");
@@ -85,6 +112,8 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("price", &OrderSummary::price)
       .def_readonly("size", &OrderSummary::size);
 
+  bind_lazy_small_vector<OrderSummary, 20>(m, "OrderList");
+
   py::class_<BookMessage>(m, "BookMessage")
       .def_readonly("asset_id", &BookMessage::asset_id)
       .def_readonly("market", &BookMessage::market)
@@ -99,6 +128,8 @@ PYBIND11_EMBEDDED_MODULE(polybench_core, m) {
       .def_readonly("side", &PriceChange::side)
       .def_readonly("best_bid", &PriceChange::best_bid)
       .def_readonly("best_ask", &PriceChange::best_ask);
+
+  bind_lazy_small_vector<PriceChange, 2>(m, "PriceChangeList");
 
   py::class_<PriceChangeMessage>(m, "PriceChangeMessage")
       .def_readonly("market", &PriceChangeMessage::market)
