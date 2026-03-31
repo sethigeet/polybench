@@ -114,6 +114,7 @@ bool PolymarketWS::wait_for_messages(std::chrono::microseconds timeout) {
 }
 
 template <std::ranges::range R>
+requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
 void send_subscription(const R& asset_ids, ix::WebSocket& ws) {
   simdjson::builder::string_builder sb;
   sb.start_object();
@@ -134,6 +135,7 @@ void send_subscription(const R& asset_ids, ix::WebSocket& ws) {
 }
 
 template <std::ranges::range R>
+requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
 void PolymarketWS::subscribe(const R& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
@@ -148,6 +150,7 @@ void PolymarketWS::subscribe(const R& asset_ids) {
 }
 
 template <std::ranges::range R>
+requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
 void send_unsubscription(const R& asset_ids, ix::WebSocket& ws) {
   simdjson::builder::string_builder sb;
   sb.start_object();
@@ -166,6 +169,7 @@ void send_unsubscription(const R& asset_ids, ix::WebSocket& ws) {
 }
 
 template <std::ranges::range R>
+requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
 void PolymarketWS::unsubscribe(const R& asset_ids) {
   {
     std::lock_guard<std::mutex> lock(subscription_mutex_);
@@ -200,5 +204,4 @@ void PolymarketWS::maybe_pin_ingest_thread() {
 
 // Explicit template instantiations for types used in the codebase
 template void PolymarketWS::subscribe<std::vector<AssetId>>(const std::vector<AssetId>&);
-template void PolymarketWS::unsubscribe<SmallVector<AssetId, 2>>(
-    const SmallVector<AssetId, 2>&);
+template void PolymarketWS::unsubscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);

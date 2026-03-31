@@ -11,8 +11,10 @@
 #include "market_data_transport.hpp"
 
 template <std::ranges::range R>
+requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
 void send_subscription(const R& asset_ids, ix::WebSocket& ws);
 template <std::ranges::range R>
+requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
 void send_unsubscription(const R& asset_ids, ix::WebSocket& ws);
 
 class PolymarketWS {
@@ -37,8 +39,10 @@ class PolymarketWS {
   bool wait_for_messages(std::chrono::microseconds timeout);
 
   template <std::ranges::range R>
+  requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
   void subscribe(const R& asset_ids);
   template <std::ranges::range R>
+  requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
   void unsubscribe(const R& asset_ids);
 
   [[nodiscard]] const PerfStats& perf_stats() const;

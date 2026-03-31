@@ -42,11 +42,13 @@ class FakeTransport {
   [[nodiscard]] const PerfStats& perf_stats() const { return perf_stats_; }
 
   template <std::ranges::range R>
+  requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
   void subscribe(const R& asset_ids) {
     subscribed_.insert(subscribed_.end(), asset_ids.begin(), asset_ids.end());
   }
 
   template <std::ranges::range R>
+  requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<R>>, AssetId>
   void unsubscribe(const R& asset_ids) {
     for (const auto& asset_id : asset_ids) {
       subscribed_.erase(std::remove(subscribed_.begin(), subscribed_.end(), asset_id),
