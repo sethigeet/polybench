@@ -2,10 +2,15 @@
 
 #include <simdjson.h>
 
+#include "utils/thread.hpp"
+
 #define LOGGER_NAME "WebSocket"
 #include "logger.hpp"
 
-PolymarketWS::PolymarketWS(const WsConfig& config) : config_(config) {
+PolymarketWS::PolymarketWS(const TransportConfig& config)
+    : config_(config),
+      perf_stats_(config_.perf_stats),
+      pipeline_(config_.message_queue_capacity, &perf_stats_) {
   current_subscriptions_ = {config.asset_ids.begin(), config.asset_ids.end()};
 
   ws_.setUrl(config_.url);
@@ -17,6 +22,7 @@ PolymarketWS::PolymarketWS(const WsConfig& config) : config_(config) {
   ws_.setMaxWaitBetweenReconnectionRetries(config_.reconnect_wait_max_secs * 1000);
 
   ws_.setOnMessageCallback([this](const ix::WebSocketMessagePtr& msg) {
+    maybe_pin_ingest_thread();
     switch (msg->type) {
       case ix::WebSocketMessageType::Open:
         LOG_INFO("Connected to {}", config_.url);
@@ -75,14 +81,8 @@ void PolymarketWS::on_error(ErrorCallback callback) {
 
 size_t PolymarketWS::poll_messages(SmallVector<PolymarketMessage, kMessageBatchSize>& out,
                                    size_t max_messages) {
-  size_t count = 0;
-  while (max_messages == 0 || count < max_messages) {
-    auto msg = message_buffer_.pop();
-    if (!msg) break;
-    out.push_back(std::move(*msg));
-    ++count;
-  }
-  return count;
+  perf_stats_.record_poll();
+  return pipeline_.poll_messages(out, max_messages);
 }
 
 void PolymarketWS::on_connect(ConnectCallback callback) {
@@ -102,11 +102,16 @@ void PolymarketWS::start() {
 
 void PolymarketWS::stop() {
   LOG_INFO("Stopping WebSocket connection");
+  pipeline_.notify_shutdown();
   ws_.stop();
   connected_ = false;
 }
 
 bool PolymarketWS::is_connected() const { return connected_; }
+
+bool PolymarketWS::wait_for_messages(std::chrono::microseconds timeout) {
+  return pipeline_.wait_for_messages(timeout);
+}
 
 template <std::ranges::range R>
 void send_subscription(const R& asset_ids, ix::WebSocket& ws) {
@@ -177,23 +182,23 @@ void PolymarketWS::unsubscribe(const R& asset_ids) {
   }
 }
 
-void PolymarketWS::handle_message(const std::string& message) {
-  LOG_DEBUG("Received message ({} bytes)", message.length());
+void PolymarketWS::handle_message(std::string_view message) {
+  pipeline_.ingest_message(message);
+  perf_stats_.maybe_log(LOGGER_NAME);
+}
 
-  SmallVector<PolymarketMessage, 2> parsed;
-  size_t count = json_parser_.parse(message, parsed);
-  for (auto& msg : parsed) {
-    message_buffer_.push_wait(std::move(msg), []() {
-      LOG_WARN("Ring buffer full - experiencing backpressure from slow consumer");
-    });
-  }
-  if (count > 0) {
-    LOG_DEBUG("Queued {} messages (buffer size: {})", count, message_buffer_.size());
+const PerfStats& PolymarketWS::perf_stats() const { return perf_stats_; }
+
+void PolymarketWS::maybe_pin_ingest_thread() {
+  if (ingest_thread_pinned_.load(std::memory_order_acquire)) return;
+  if (config_.ingest_cpu_affinity < 0) return;
+
+  if (utils::thread::pin_current_thread_to_cpu(config_.ingest_cpu_affinity, "ingest")) {
+    ingest_thread_pinned_.store(true, std::memory_order_release);
   }
 }
 
 // Explicit template instantiations for types used in the codebase
 template void PolymarketWS::subscribe<std::vector<AssetId>>(const std::vector<AssetId>&);
-template void PolymarketWS::unsubscribe<std::vector<AssetId>>(const std::vector<AssetId>&);
-template void PolymarketWS::subscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);
-template void PolymarketWS::unsubscribe<SmallVector<AssetId, 2>>(const SmallVector<AssetId, 2>&);
+template void PolymarketWS::unsubscribe<SmallVector<AssetId, 2>>(
+    const SmallVector<AssetId, 2>&);

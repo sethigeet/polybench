@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <variant>
 
 #include "common.hpp"
 #include "small_vector.hpp"
@@ -72,3 +73,6 @@ struct MarketResolvedMessage {
   SmallVector<AssetId, 2> asset_ids;
   uint64_t timestamp;
 };
+
+using PolymarketMessage = std::variant<BookMessage, PriceChangeMessage, LastTradeMessage,
+                                       TickSizeChangeMessage, MarketResolvedMessage>;

@@ -7,8 +7,6 @@
 
 namespace py = pybind11;
 
-static Engine* g_engine = nullptr;
-
 void signal_handler(int signum) {
   if (signum == SIGINT || signum == SIGTERM) {
     LOG_INFO("Received shutdown signal ({})", signum);
@@ -17,9 +15,7 @@ void signal_handler(int signum) {
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
 
-    if (g_engine) {
-      g_engine->stop();
-    }
+    stop_active_engine();
   }
 }
 
@@ -49,6 +45,7 @@ int main(int argc, char* argv[]) {
 
   // Load and initialize Python Interpreter once
   py::scoped_interpreter guard{};
+  int exit_code = 0;
 
   try {
     // Add 'strategies' directory to Python path
@@ -66,13 +63,8 @@ int main(int argc, char* argv[]) {
     // exists so we can cast it to a C++ Strategy shared_ptr
     auto strategy = py_strat_obj.cast<std::shared_ptr<Strategy>>();
 
-    Engine engine(strategy, config);
-    g_engine = &engine;
-
     LOG_INFO("Starting engine with live Polymarket data...");
-    engine.run();
-
-    g_engine = nullptr;
+    exit_code = run_engine(strategy, config);
   } catch (py::error_already_set& e) {
     spdlog::get("Python")->error("Python Error: {}", e.what());
     return 1;
@@ -83,5 +75,5 @@ int main(int argc, char* argv[]) {
 
   LOG_INFO("PolyBench shutdown complete.");
 
-  return 0;
+  return exit_code;
 }

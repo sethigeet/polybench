@@ -65,11 +65,14 @@ FetchContent_MakeAvailable(pybind11 spdlog simdjson ixwebsocket)
 add_library(polybench_core 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/engine.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ingest_pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/json_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/market_book.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/perf_stats.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/polymarket_ws.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/portfolio_tracker.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread.cpp
 )
 
 target_include_directories(polybench_core PUBLIC src)
@@ -114,6 +117,7 @@ if(BUILD_TESTS)
         tests/test_ring_buffer.cpp
         tests/test_market_book.cpp
         tests/test_exchange.cpp
+        tests/test_market_data_transport.cpp
         tests/test_portfolio_tracker.cpp
         tests/test_json_parser.cpp
     )

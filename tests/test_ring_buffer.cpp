@@ -98,6 +98,36 @@ TEST_F(RingBufferTest, Capacity) {
   EXPECT_EQ((RingBuffer<int, 1024>::capacity()), 1023);
 }
 
+TEST(RingBufferDynamicTest, RuntimeCapacityAndFIFO) {
+  RingBuffer<int, 0> buffer(7);
+
+  EXPECT_EQ(buffer.capacity(), 7);
+  for (int i = 0; i < 7; ++i) {
+    EXPECT_TRUE(buffer.push(i));
+  }
+  EXPECT_FALSE(buffer.push(7));
+
+  for (int i = 0; i < 7; ++i) {
+    auto value = buffer.pop();
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(*value, i);
+  }
+  EXPECT_TRUE(buffer.empty());
+}
+
+TEST(RingBufferDynamicTest, RuntimeBufferDoesNotResizeWhenFull) {
+  RingBuffer<int, 0> buffer(3);
+
+  EXPECT_EQ(buffer.capacity(), 3);
+  EXPECT_TRUE(buffer.push(1));
+  EXPECT_TRUE(buffer.push(2));
+  EXPECT_TRUE(buffer.push(3));
+
+  EXPECT_FALSE(buffer.push(4));
+  EXPECT_EQ(buffer.capacity(), 3);
+  EXPECT_EQ(buffer.size(), 3);
+}
+
 // Multi-threaded test for SPSC correctness
 TEST(RingBufferConcurrencyTest, ProducerConsumer) {
   RingBuffer<int, 1024> buffer;

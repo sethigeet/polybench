@@ -2,13 +2,16 @@
 
 #include <charconv>
 #include <cstring>
+#include <type_traits>
 
 #define LOGGER_NAME "JsonParser"
 #include "logger.hpp"
 
 JsonParser::JsonParser() : padded_buffer_(1024) {}
 
-size_t JsonParser::parse(const std::string& json_str, SmallVector<PolymarketMessage, 2>& out) {
+template <size_t N>
+size_t JsonParser::parse(std::string_view json_str, SmallVector<PolymarketMessage, N>& out,
+                         PerfStats* perf_stats) {
   if (padded_buffer_.size() < json_str.size()) [[unlikely]] {
     padded_buffer_ = simdjson::padded_string(json_str.size() * 2);
   }
@@ -30,6 +33,24 @@ size_t JsonParser::parse(const std::string& json_str, SmallVector<PolymarketMess
     for (auto element : arr_result) {
       auto obj_result = element.get_object().value();
       if (auto msg = parse_object(obj_result); msg.has_value()) {
+        if (perf_stats) {
+          perf_stats->record_message_type(std::visit(
+              [](const auto& parsed) -> std::string_view {
+                using T = std::decay_t<decltype(parsed)>;
+                if constexpr (std::is_same_v<T, BookMessage>) {
+                  return "book";
+                } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
+                  return "price_change";
+                } else if constexpr (std::is_same_v<T, LastTradeMessage>) {
+                  return "last_trade_price";
+                } else if constexpr (std::is_same_v<T, TickSizeChangeMessage>) {
+                  return "tick_size_change";
+                } else {
+                  return "market_resolved";
+                }
+              },
+              *msg));
+        }
         out.push_back(std::move(*msg));
         ++count;
       }
@@ -37,6 +58,24 @@ size_t JsonParser::parse(const std::string& json_str, SmallVector<PolymarketMess
   } else {
     auto obj_result = doc.get_object().value();
     if (auto msg = parse_object(obj_result); msg.has_value()) {
+      if (perf_stats) {
+        perf_stats->record_message_type(std::visit(
+            [](const auto& parsed) -> std::string_view {
+              using T = std::decay_t<decltype(parsed)>;
+              if constexpr (std::is_same_v<T, BookMessage>) {
+                return "book";
+              } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
+                return "price_change";
+              } else if constexpr (std::is_same_v<T, LastTradeMessage>) {
+                return "last_trade_price";
+              } else if constexpr (std::is_same_v<T, TickSizeChangeMessage>) {
+                return "tick_size_change";
+              } else {
+                return "market_resolved";
+              }
+            },
+            *msg));
+      }
       out.push_back(std::move(*msg));
       ++count;
     }
@@ -236,3 +275,8 @@ Outcome JsonParser::parse_outcome(std::string_view str) noexcept {
   }
   return Outcome::No;
 }
+
+template size_t JsonParser::parse<2>(std::string_view, SmallVector<PolymarketMessage, 2>&,
+                                     PerfStats*);
+template size_t JsonParser::parse<16>(std::string_view, SmallVector<PolymarketMessage, 16>&,
+                                      PerfStats*);

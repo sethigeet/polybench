@@ -1,7 +1,8 @@
 #pragma once
 #include <chrono>
 #include <iostream>
-#include <string>
+
+namespace utils::timer {
 
 class ScopeTimer {
  public:
@@ -19,8 +20,4 @@ class ScopeTimer {
   std::chrono::high_resolution_clock::time_point start_;
 };
 
-inline std::string to_upper(const std::string& str) {
-  std::string result = str;
-  std::transform(result.begin(), result.end(), result.begin(), ::toupper);
-  return result;
-}
+}  // namespace utils::timer

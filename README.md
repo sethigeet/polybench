@@ -12,6 +12,8 @@ A high-performance algorithmic trading framework for [Polymarket](https://polyma
 ### Performance Optimized
 - **Zero-copy JSON Parsing** — Ultra-fast message parsing with [simdjson](https://github.com/simdjson/simdjson)
 - **Lock-free Ring Buffer** — Efficient message passing between WebSocket and engine threads
+- **Transport Abstraction** — Engine code now targets a shared market-data transport interface
+- **Perf Counters & Wakeups** — Transport and engine latency counters with event-driven consumer wakeup
 - **SmallVector & FixedString** — Stack-allocated containers to minimize heap allocations in hot paths
 - **Profile-Guided Optimization (PGO)** — Built-in support for PGO builds for maximum performance
 
@@ -59,6 +61,17 @@ Configuration format:
 ```json
 {
   "ws_url": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+  "transport": {
+    "mode": "ixwebsocket",
+    "message_queue_capacity": 4096,
+    "consumer_spin_count": 256,
+    "consumer_wait_timeout_us": 500,
+    "consumer_sleep_us": 50,
+    "ingest_cpu_affinity": -1,
+    "engine_cpu_affinity": -1,
+    "enable_perf_stats": false,
+    "perf_log_interval_messages": 10000
+  },
   "assets": [
     {
       "asset_id": "<ASSET_TOKEN_ID>",
@@ -72,6 +85,18 @@ Configuration format:
     }
   ]
 }
+```
+
+Transport notes:
+- `ixwebsocket` is the default and fully supported transport.
+- `epoll_ws` is a Linux-native scaffold for future work and currently returns a runtime error if selected.
+- `io_uring_ws` is reserved for future implementation.
+
+Useful CLI flags:
+```bash
+./build/debug/polybench --config config.json --enable-perf-stats --perf-log-interval 5000
+./build/debug/polybench --config config.json --queue-capacity 8192 --engine-cpu 2 --ingest-cpu 3
+./build/debug/polybench --config config.json --transport ixwebsocket
 ```
 
 ### 4. Run with a Strategy

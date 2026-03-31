@@ -3,29 +3,12 @@
 #include <ixwebsocket/IXWebSocket.h>
 
 #include <atomic>
-#include <functional>
 #include <mutex>
-#include <string>
+#include <ranges>
 #include <unordered_set>
-#include <vector>
 
-#include "json_parser.hpp"
-#include "types/ring_buffer.hpp"
-
-inline constexpr size_t kMessageBatchSize = 16;
-
-struct WsConfig {
-  std::string url = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
-  std::vector<AssetId> asset_ids;
-  // Polymarket requires a ping interval of 10 seconds to keep the connection alive
-  int ping_interval_secs = 10;
-  int reconnect_wait_secs = 1;
-  int reconnect_wait_max_secs = 30;
-};
-
-using ErrorCallback = std::function<void(const std::string&)>;
-using ConnectCallback = std::function<void()>;
-using DisconnectCallback = std::function<void()>;
+#include "ingest_pipeline.hpp"
+#include "market_data_transport.hpp"
 
 template <std::ranges::range R>
 void send_subscription(const R& asset_ids, ix::WebSocket& ws);
@@ -34,7 +17,7 @@ void send_unsubscription(const R& asset_ids, ix::WebSocket& ws);
 
 class PolymarketWS {
  public:
-  explicit PolymarketWS(const WsConfig& config);
+  explicit PolymarketWS(const TransportConfig& config);
   ~PolymarketWS();
 
   // Non-copyable
@@ -49,23 +32,25 @@ class PolymarketWS {
   void stop();
   bool is_connected() const;
 
-  // Poll messages from ring buffer (call from main thread to avoid blocking WS thread)
-  // Appends up to max_messages to out, or all available if max_messages is 0
-  // Returns number of messages polled
   size_t poll_messages(SmallVector<PolymarketMessage, kMessageBatchSize>& out,
                        size_t max_messages = 0);
+  bool wait_for_messages(std::chrono::microseconds timeout);
 
   template <std::ranges::range R>
   void subscribe(const R& asset_ids);
   template <std::ranges::range R>
   void unsubscribe(const R& asset_ids);
 
- private:
-  void handle_message(const std::string& message);
+  [[nodiscard]] const PerfStats& perf_stats() const;
 
-  WsConfig config_;
+ private:
+  void handle_message(std::string_view message);
+  void maybe_pin_ingest_thread();
+
+  TransportConfig config_;
   ix::WebSocket ws_;
   std::atomic<bool> connected_{false};
+  std::atomic<bool> ingest_thread_pinned_{false};
 
   ErrorCallback error_callback_;
   ConnectCallback connect_callback_;
@@ -75,9 +60,6 @@ class PolymarketWS {
   std::mutex subscription_mutex_;
   std::unordered_set<AssetId> current_subscriptions_;
 
-  // Lock-free ring buffer for decoupling WS thread from processing thread
-  RingBuffer<PolymarketMessage, 1024> message_buffer_;
-
-  // NOTE: simdjson parser is not thread-safe
-  JsonParser json_parser_;
+  PerfStats perf_stats_;
+  MessagePipeline pipeline_;
 };

@@ -1,5 +1,16 @@
 {
   "ws_url": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+  "transport": {
+    "mode": "ixwebsocket",
+    "message_queue_capacity": 4096,
+    "consumer_spin_count": 256,
+    "consumer_wait_timeout_us": 500,
+    "consumer_sleep_us": 50,
+    "ingest_cpu_affinity": -1,
+    "engine_cpu_affinity": -1,
+    "enable_perf_stats": false,
+    "perf_log_interval_messages": 10000
+  },
   "assets": [
     {
       "asset_id": "9071927158124339648289279313460688740570529269718301269592153198706548693611",

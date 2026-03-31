@@ -1,6 +1,5 @@
 #pragma once
 #include <atomic>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,13 +7,28 @@
 
 #include "exchange.hpp"
 #include "market_book.hpp"
-#include "polymarket_ws.hpp"
+#include "market_data_transport.hpp"
 #include "portfolio_tracker.hpp"
 #include "strategy.hpp"
 
 struct EngineConfig {
   std::string ws_url = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
   std::vector<AssetId> asset_ids;
+
+  struct RuntimeTuning {
+    TransportMode mode = TransportMode::IxWebSocket;
+    size_t message_queue_capacity = 4096;
+    int consumer_spin_count = 256;
+    int consumer_wait_timeout_us = 500;
+    int consumer_sleep_initial_us = 50;
+    int consumer_sleep_max_us = 1000;
+    int ingest_cpu_affinity = -1;
+    int engine_cpu_affinity = -1;
+    int socket_rcvbuf_bytes = 0;
+    int busy_poll_us = 0;
+    size_t recv_batch_size = 32;
+    PerfStatsConfig perf_stats;
+  } runtime;
 
   struct AssetMapping {
     MarketId market_id;
@@ -23,30 +37,5 @@ struct EngineConfig {
   std::unordered_map<AssetId, AssetMapping> asset_mappings;
 };
 
-class Engine {
- public:
-  explicit Engine(std::shared_ptr<Strategy> strategy, const EngineConfig& config);
-  ~Engine();
-
-  void run();
-  void stop();
-
- private:
-  void process_message(const PolymarketMessage& msg);
-  void process_book_message(const BookMessage& msg);
-  void process_price_change_message(const PriceChangeMessage& msg);
-  void process_trade_message(const LastTradeMessage& msg);
-  void process_tick_size_change_message(const TickSizeChangeMessage& msg);
-  void process_market_resolved_message(const MarketResolvedMessage& msg);
-  void update_mtm(const MarketId& market_id, const AssetId& asset_id);
-  void print_portfolio_summary();
-
-  EngineConfig config_;
-  std::shared_ptr<Strategy> strategy_;
-  std::unordered_map<MarketId, MarketBook> books_;
-  std::unordered_set<MarketId> active_markets_;
-  Exchange exchange_;
-  PortfolioTracker portfolio_;
-  std::unique_ptr<PolymarketWS> ws_;
-  std::atomic<bool> running_{false};
-};
+int run_engine(std::shared_ptr<Strategy> strategy, const EngineConfig& config);
+void stop_active_engine();

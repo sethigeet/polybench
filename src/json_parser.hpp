@@ -3,20 +3,19 @@
 #include <simdjson.h>
 
 #include <optional>
-#include <string>
-#include <variant>
+#include <string_view>
 
+#include "perf_stats.hpp"
 #include "types/polymarket.hpp"
 #include "types/small_vector.hpp"
-
-using PolymarketMessage = std::variant<BookMessage, PriceChangeMessage, LastTradeMessage,
-                                       TickSizeChangeMessage, MarketResolvedMessage>;
 
 class JsonParser {
  public:
   JsonParser();
 
-  size_t parse(const std::string& json_str, SmallVector<PolymarketMessage, 2>& out);
+  template <size_t N>
+  size_t parse(std::string_view json_str, SmallVector<PolymarketMessage, N>& out,
+               PerfStats* perf_stats = nullptr);
 
  private:
   simdjson::ondemand::parser parser_;
