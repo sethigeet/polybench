@@ -121,18 +121,18 @@ static void BM_PythonCallback_OnBook_WithGetters(benchmark::State &state) {
 }
 BENCHMARK(BM_PythonCallback_OnBook_WithGetters);
 
-// Measures batch callback overhead (1 dispatch for N messages)
+// Measures repeated book callbacks over a fixed-size batch
 static void BM_PythonCallback_OnBookBatch(benchmark::State &state) {
   init_interpreter();
   auto handle = make_noop_strategy();
 
   constexpr size_t kBatchSize = 16;
   auto msg = make_book_message();
-  const BookMessage *batch[kBatchSize];
-  for (size_t i = 0; i < kBatchSize; ++i) batch[i] = &msg;
 
   for (auto _ : state) {
-    handle.ptr->on_book_batch(batch, kBatchSize);
+    for (size_t i = 0; i < kBatchSize; ++i) {
+      handle.ptr->on_book(msg);
+    }
   }
   state.SetItemsProcessed(state.iterations() * kBatchSize);
 }

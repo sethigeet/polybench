@@ -146,6 +146,7 @@ if(BUILD_BENCHMARKS)
         benchmarks/bench_main.cpp
         benchmarks/bench_exchange.cpp
         benchmarks/bench_fixed_string.cpp
+        benchmarks/bench_ingest_pipeline.cpp
         benchmarks/bench_json_parser.cpp
         benchmarks/bench_market_book.cpp
         benchmarks/bench_ring_buffer.cpp
