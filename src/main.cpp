@@ -75,5 +75,8 @@ int main(int argc, char* argv[]) {
 
   LOG_INFO("PolyBench shutdown complete.");
 
+  // Flush async log queue and join the spdlog background thread
+  spdlog::shutdown();
+
   return exit_code;
 }

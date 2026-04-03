@@ -13,6 +13,8 @@ uint64_t load_relaxed(const std::atomic<uint64_t>& value) noexcept {
 
 PerfStats::PerfStats(PerfStatsConfig config) : config_(config) {}
 
+PerfStats::~PerfStats() { stop_logging(); }
+
 bool PerfStats::enabled() const noexcept { return config_.enabled; }
 
 void PerfStats::record_frame(size_t bytes) noexcept {
@@ -43,7 +45,7 @@ void PerfStats::record_engine_dispatch(size_t processed_messages, uint64_t dispa
   if (!enabled()) return;
 
   total_engine_dispatch_ns_.fetch_add(dispatch_ns, std::memory_order_relaxed);
-  total_polls_.fetch_add(processed_messages > 0 ? 1 : 0, std::memory_order_relaxed);
+  // Note: total_polls_ is now counted by record_poll() in poll_messages() (productive polls only)
 }
 
 void PerfStats::record_poll() noexcept {
@@ -88,28 +90,51 @@ PerfStatsSnapshot PerfStats::snapshot() const noexcept {
   return snapshot;
 }
 
-void PerfStats::maybe_log(std::string_view logger_name) const {
+void PerfStats::start_logging() {
   if (!enabled()) return;
+  stop_logging_.store(false, std::memory_order_release);
+  log_thread_ = std::thread([this] { log_loop(); });
+}
 
-  const uint64_t current_messages = messages_parsed_.load(std::memory_order_relaxed);
-  uint64_t last_logged = last_logged_message_count_.load(std::memory_order_relaxed);
-  if (current_messages < last_logged + config_.log_interval_messages) {
-    return;
+void PerfStats::stop_logging() {
+  stop_logging_.store(true, std::memory_order_release);
+  log_cv_.notify_one();
+  if (log_thread_.joinable()) {
+    log_thread_.join();
+  }
+}
+
+void PerfStats::log_loop() {
+  while (!stop_logging_.load(std::memory_order_acquire)) {
+    {
+      std::unique_lock<std::mutex> lock(log_mutex_);
+      log_cv_.wait_for(lock, std::chrono::milliseconds(100));
+    }
+
+    const uint64_t current_messages = messages_parsed_.load(std::memory_order_relaxed);
+    uint64_t last_logged = last_logged_message_count_.load(std::memory_order_relaxed);
+    if (current_messages >= last_logged + config_.log_interval_messages) {
+      if (last_logged_message_count_.compare_exchange_strong(last_logged, current_messages,
+                                                              std::memory_order_relaxed)) {
+        log_snapshot();
+      }
+    }
   }
 
-  if (!last_logged_message_count_.compare_exchange_strong(last_logged, current_messages,
-                                                          std::memory_order_relaxed)) {
-    return;
-  }
+  // Final log on shutdown
+  log_snapshot();
+}
 
+void PerfStats::log_snapshot() const {
   const auto snap = snapshot();
-  const double avg_parse_ns =
-      snap.messages_parsed == 0 ? 0.0 : static_cast<double>(snap.total_parse_ns) / snap.messages_parsed;
-  const double avg_dispatch_ns = snap.messages_parsed == 0
-                                     ? 0.0
-                                     : static_cast<double>(snap.total_engine_dispatch_ns) / snap.messages_parsed;
+  if (snap.messages_parsed == 0) return;
 
-  logger::get(std::string(logger_name))
+  const double avg_parse_ns =
+      static_cast<double>(snap.total_parse_ns) / snap.messages_parsed;
+  const double avg_dispatch_ns =
+      static_cast<double>(snap.total_engine_dispatch_ns) / snap.messages_parsed;
+
+  logger::get("Perf")
       .info("Perf frames={} bytes={} parsed={} parse_errors={} dropped={} avg_parse_ns={:.1f} "
             "avg_dispatch_ns={:.1f} backpressure={}",
             snap.frames_received, snap.bytes_received, snap.messages_parsed, snap.parse_errors,

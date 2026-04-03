@@ -46,6 +46,7 @@ class PolymarketWS {
   void unsubscribe(const R& asset_ids);
 
   [[nodiscard]] const PerfStats& perf_stats() const;
+  [[nodiscard]] PerfStats& perf_stats();
 
  private:
   void handle_message(std::string_view message);

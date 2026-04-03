@@ -2,9 +2,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <string>
+#include <thread>
 
 struct PerfStatsConfig {
   bool enabled = false;
@@ -33,6 +36,11 @@ struct PerfStatsSnapshot {
 class PerfStats {
  public:
   explicit PerfStats(PerfStatsConfig config = {});
+  ~PerfStats();
+
+  // Non-copyable, non-movable (owns a thread)
+  PerfStats(const PerfStats&) = delete;
+  PerfStats& operator=(const PerfStats&) = delete;
 
   [[nodiscard]] bool enabled() const noexcept;
 
@@ -44,11 +52,24 @@ class PerfStats {
   void record_message_type(std::string_view event_type) noexcept;
 
   [[nodiscard]] PerfStatsSnapshot snapshot() const noexcept;
-  void maybe_log(std::string_view logger_name) const;
+
+  /// Start a background thread that periodically logs stats when the message threshold is crossed.
+  void start_logging();
+  /// Stop the background logging thread. Safe to call multiple times.
+  void stop_logging();
 
  private:
+  void log_loop();
+  void log_snapshot() const;
+
   PerfStatsConfig config_;
   mutable std::atomic<uint64_t> last_logged_message_count_{0};
+
+  // Background logging thread state
+  std::thread log_thread_;
+  std::atomic<bool> stop_logging_{false};
+  std::mutex log_mutex_;
+  std::condition_variable log_cv_;
 
   std::atomic<uint64_t> frames_received_{0};
   std::atomic<uint64_t> bytes_received_{0};

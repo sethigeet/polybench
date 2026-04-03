@@ -4,24 +4,33 @@ MessagePipeline::MessagePipeline(size_t capacity, PerfStats* perf_stats)
     : queue_(capacity), perf_stats_(perf_stats) {}
 
 size_t MessagePipeline::ingest_message(std::string_view message) {
-  if (perf_stats_) {
+  const bool stats_active = perf_stats_ && perf_stats_->enabled();
+
+  if (stats_active) {
     perf_stats_->record_frame(message.size());
   }
 
   parsed_batch_.clear();
-  const auto parse_start = std::chrono::steady_clock::now();
-  const size_t parsed_count = parser_.parse(message, parsed_batch_, perf_stats_);
-  const auto parse_end = std::chrono::steady_clock::now();
 
-  if (perf_stats_) {
+  // Only call steady_clock::now() when stats are active (~20-30ns each avoided otherwise)
+  const auto parse_start = stats_active ? std::chrono::steady_clock::now()
+                                        : std::chrono::steady_clock::time_point{};
+  const size_t parsed_count = parser_.parse(message, parsed_batch_, stats_active ? perf_stats_ : nullptr);
+
+  if (stats_active) {
     const uint64_t parse_ns =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(parse_end - parse_start).count();
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - parse_start)
+            .count();
     perf_stats_->record_parse(parsed_count, parse_ns, parsed_count == 0 ? 1 : 0);
   }
 
   bool had_backpressure = false;
   size_t dropped = 0;
-  const auto queue_wait_start = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point queue_wait_start;
+  if (stats_active) {
+    queue_wait_start = std::chrono::steady_clock::now();
+  }
   for (auto& parsed : parsed_batch_) {
     if (!queue_.push(std::move(parsed))) {
       had_backpressure = true;
@@ -29,7 +38,7 @@ size_t MessagePipeline::ingest_message(std::string_view message) {
     }
   }
 
-  if (had_backpressure && perf_stats_) {
+  if (had_backpressure && stats_active) {
     const uint64_t wait_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                  std::chrono::steady_clock::now() - queue_wait_start)
                                  .count();

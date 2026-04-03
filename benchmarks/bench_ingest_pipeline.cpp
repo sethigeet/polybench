@@ -29,3 +29,17 @@ static void BM_IngestPipeline_FrameToQueue(benchmark::State& state) {
   }
 }
 BENCHMARK(BM_IngestPipeline_FrameToQueue);
+
+// Stats ENABLED — measures overhead of recording + timing on the hot path
+static void BM_IngestPipeline_FrameToQueue_WithStats(benchmark::State& state) {
+  PerfStats perf_stats({.enabled = true, .log_interval_messages = 1000000});
+  MessagePipeline pipeline(1024, &perf_stats);
+  SmallVector<PolymarketMessage, 16> messages;
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(pipeline.ingest_message(kTransportBookMessageJson));
+    messages.clear();
+    benchmark::DoNotOptimize(pipeline.poll_messages(messages, 16));
+  }
+}
+BENCHMARK(BM_IngestPipeline_FrameToQueue_WithStats);

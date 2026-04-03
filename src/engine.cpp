@@ -95,6 +95,7 @@ class Engine {
     }
 
     transport_.start();
+    transport_.perf_stats().start_logging();
 
     auto current_sleep_us = config_.runtime.consumer_sleep_initial_us;
     SmallVector<PolymarketMessage, kMessageBatchSize> messages;
@@ -133,12 +134,11 @@ class Engine {
       for (const auto& msg : messages) {
         process_message(msg);
       }
-      auto& perf_stats = const_cast<PerfStats&>(transport_.perf_stats());
+      auto& perf_stats = transport_.perf_stats();
       const auto dispatch_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                    std::chrono::steady_clock::now() - dispatch_start)
                                    .count();
       perf_stats.record_engine_dispatch(messages.size(), dispatch_ns);
-      perf_stats.maybe_log(LOGGER_NAME);
       portfolio_.record_equity_snapshot();
     }
 
@@ -149,6 +149,7 @@ class Engine {
     if (running_) {
       LOG_INFO("Stopping engine...");
       running_ = false;
+      transport_.perf_stats().stop_logging();
       transport_.stop();
     }
   }

@@ -1,5 +1,6 @@
 #include "logger.hpp"
 
+#include <spdlog/async.h>
 #include <spdlog/cfg/helpers.h>
 #include <spdlog/details/os.h>
 #include <spdlog/details/registry.h>
@@ -29,21 +30,35 @@ inline void load_env_levels() {
 void init() {
   static std::once_flag once;
   std::call_once(once, [] {
+    // Initialize spdlog async thread pool: 8K slot queue, 1 background writer thread.
+    // All loggers enqueue messages and return immediately; I/O happens off the hot path.
+    spdlog::init_thread_pool(8192, 1);
+
     bool fancy = is_fancy_enabled();
-    std::array names = {"Engine", "Exchange", "Python", "System", "WebSocket", "JsonParser"};
+    std::array names = {"Engine", "Exchange", "Python", "System", "WebSocket", "JsonParser", "Perf"};
 
     for (const std::string& name : names) {
-      std::shared_ptr<spdlog::logger> l;
-
+      // Create sink
+      spdlog::sink_ptr sink;
+      std::string pattern;
       if (fancy) {
-        l = spdlog::stdout_color_mt(name);
-        l->set_pattern("[%n] [%H:%M:%S.%e] [%^%l%$] %v");
+        sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        pattern = "[%n] [%H:%M:%S.%e] [%^%l%$] %v";
       } else {
-        l = spdlog::stdout_logger_mt(name);
-        l->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+        sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
+        pattern = "[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v";
       }
+
+      // Create async logger: enqueue + return immediately, overrun_oldest if queue full
+      auto l = std::make_shared<spdlog::async_logger>(
+          name, sink, spdlog::thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+      l->set_pattern(pattern);
       l->set_level(DEFAULT_LOG_LEVEL);
+      spdlog::register_logger(l);
     }
+
+    // Flush async loggers periodically so output appears in a timely fashion
+    spdlog::flush_every(std::chrono::seconds(1));
 
     load_env_levels();
   });
@@ -52,10 +67,16 @@ void init() {
 spdlog::logger& get(const std::string& name) {
   if (auto logger = spdlog::get(name)) return *logger;
 
+  // Fallback: lazily create as async (non-blocking) to match init() loggers
+  spdlog::sink_ptr sink;
   if (is_fancy_enabled()) {
-    return *spdlog::stdout_color_mt(name);
+    sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   } else {
-    return *spdlog::stdout_logger_mt(name);
+    sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
   }
+  auto l = std::make_shared<spdlog::async_logger>(
+      name, sink, spdlog::thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+  spdlog::register_logger(l);
+  return *l;
 }
 }  // namespace logger

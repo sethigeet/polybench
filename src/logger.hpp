@@ -1,5 +1,6 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -23,9 +24,31 @@ bool is_fancy_enabled();
 #define LOGGER_NAME "System"
 #endif
 
-// We use the spdlog macros to support source location (file/line) if needed
-#define LOG_TRACE(...) logger::get(LOGGER_NAME).trace(__VA_ARGS__)
-#define LOG_DEBUG(...) logger::get(LOGGER_NAME).debug(__VA_ARGS__)
-#define LOG_INFO(...) logger::get(LOGGER_NAME).info(__VA_ARGS__)
-#define LOG_WARN(...) logger::get(LOGGER_NAME).warn(__VA_ARGS__)
-#define LOG_ERROR(...) logger::get(LOGGER_NAME).error(__VA_ARGS__)
+// Cached logger pointer macros: the spdlog registry lookup happens exactly once
+// per call site (C++11 magic statics, thread-safe). All subsequent calls use the
+// cached raw pointer with zero overhead.
+#define LOG_TRACE(...)                                          \
+  do {                                                          \
+    static spdlog::logger* cached = &logger::get(LOGGER_NAME); \
+    cached->trace(__VA_ARGS__);                                 \
+  } while (0)
+#define LOG_DEBUG(...)                                          \
+  do {                                                          \
+    static spdlog::logger* cached = &logger::get(LOGGER_NAME); \
+    cached->debug(__VA_ARGS__);                                 \
+  } while (0)
+#define LOG_INFO(...)                                           \
+  do {                                                          \
+    static spdlog::logger* cached = &logger::get(LOGGER_NAME); \
+    cached->info(__VA_ARGS__);                                  \
+  } while (0)
+#define LOG_WARN(...)                                           \
+  do {                                                          \
+    static spdlog::logger* cached = &logger::get(LOGGER_NAME); \
+    cached->warn(__VA_ARGS__);                                  \
+  } while (0)
+#define LOG_ERROR(...)                                          \
+  do {                                                          \
+    static spdlog::logger* cached = &logger::get(LOGGER_NAME); \
+    cached->error(__VA_ARGS__);                                 \
+  } while (0)

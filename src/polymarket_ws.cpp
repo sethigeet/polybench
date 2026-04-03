@@ -81,8 +81,12 @@ void PolymarketWS::on_error(ErrorCallback callback) {
 
 size_t PolymarketWS::poll_messages(SmallVector<PolymarketMessage, kMessageBatchSize>& out,
                                    size_t max_messages) {
-  perf_stats_.record_poll();
-  return pipeline_.poll_messages(out, max_messages);
+  size_t count = pipeline_.poll_messages(out, max_messages);
+  // Only count productive polls — avoids up to 256 atomic increments per spin-wait cycle
+  if (count > 0) {
+    perf_stats_.record_poll();
+  }
+  return count;
 }
 
 void PolymarketWS::on_connect(ConnectCallback callback) {
@@ -188,10 +192,10 @@ void PolymarketWS::unsubscribe(const R& asset_ids) {
 
 void PolymarketWS::handle_message(std::string_view message) {
   pipeline_.ingest_message(message);
-  perf_stats_.maybe_log(LOGGER_NAME);
 }
 
 const PerfStats& PolymarketWS::perf_stats() const { return perf_stats_; }
+PerfStats& PolymarketWS::perf_stats() { return perf_stats_; }
 
 void PolymarketWS::maybe_pin_ingest_thread() {
   if (ingest_thread_pinned_.load(std::memory_order_acquire)) return;
