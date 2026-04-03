@@ -27,57 +27,27 @@ size_t JsonParser::parse(std::string_view json_str, SmallVector<PolymarketMessag
   auto doc = std::move(doc_result).value();
   size_t count = 0;
 
+  auto emit = [&](PolymarketMessage& msg) {
+    if (perf_stats) {
+      perf_stats->record_message_type(message_type_name(msg));
+    }
+    out.push_back(std::move(msg));
+    ++count;
+  };
+
   auto type_result = doc.type().value();
   if (type_result == simdjson::ondemand::json_type::array) {
     auto arr_result = doc.get_array().value();
     for (auto element : arr_result) {
       auto obj_result = element.get_object().value();
       if (auto msg = parse_object(obj_result); msg.has_value()) {
-        if (perf_stats) {
-          perf_stats->record_message_type(std::visit(
-              [](const auto& parsed) -> std::string_view {
-                using T = std::decay_t<decltype(parsed)>;
-                if constexpr (std::is_same_v<T, BookMessage>) {
-                  return "book";
-                } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
-                  return "price_change";
-                } else if constexpr (std::is_same_v<T, LastTradeMessage>) {
-                  return "last_trade_price";
-                } else if constexpr (std::is_same_v<T, TickSizeChangeMessage>) {
-                  return "tick_size_change";
-                } else {
-                  return "market_resolved";
-                }
-              },
-              *msg));
-        }
-        out.push_back(std::move(*msg));
-        ++count;
+        emit(*msg);
       }
     }
   } else {
     auto obj_result = doc.get_object().value();
     if (auto msg = parse_object(obj_result); msg.has_value()) {
-      if (perf_stats) {
-        perf_stats->record_message_type(std::visit(
-            [](const auto& parsed) -> std::string_view {
-              using T = std::decay_t<decltype(parsed)>;
-              if constexpr (std::is_same_v<T, BookMessage>) {
-                return "book";
-              } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
-                return "price_change";
-              } else if constexpr (std::is_same_v<T, LastTradeMessage>) {
-                return "last_trade_price";
-              } else if constexpr (std::is_same_v<T, TickSizeChangeMessage>) {
-                return "tick_size_change";
-              } else {
-                return "market_resolved";
-              }
-            },
-            *msg));
-      }
-      out.push_back(std::move(*msg));
-      ++count;
+      emit(*msg);
     }
   }
 
@@ -274,6 +244,25 @@ Outcome JsonParser::parse_outcome(std::string_view str) noexcept {
     if (first == 'y' || first == 'u') return Outcome::Yes;
   }
   return Outcome::No;
+}
+
+std::string_view JsonParser::message_type_name(const PolymarketMessage& msg) noexcept {
+  return std::visit(
+      [](const auto& parsed) -> std::string_view {
+        using T = std::decay_t<decltype(parsed)>;
+        if constexpr (std::is_same_v<T, BookMessage>) {
+          return "book";
+        } else if constexpr (std::is_same_v<T, PriceChangeMessage>) {
+          return "price_change";
+        } else if constexpr (std::is_same_v<T, LastTradeMessage>) {
+          return "last_trade_price";
+        } else if constexpr (std::is_same_v<T, TickSizeChangeMessage>) {
+          return "tick_size_change";
+        } else {
+          return "market_resolved";
+        }
+      },
+      msg);
 }
 
 template size_t JsonParser::parse<2>(std::string_view, SmallVector<PolymarketMessage, 2>&,

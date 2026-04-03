@@ -34,4 +34,5 @@ class JsonParser {
   static uint64_t parse_timestamp(std::string_view str);
   static Side parse_side(std::string_view str) noexcept;
   static Outcome parse_outcome(std::string_view str) noexcept;
+  static std::string_view message_type_name(const PolymarketMessage& msg) noexcept;
 };
