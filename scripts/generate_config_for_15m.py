@@ -5,6 +5,7 @@
 # ///
 
 import json
+import os
 import sys
 import time
 
@@ -36,6 +37,11 @@ config = {
         {"asset_id": no_token_id, "market_id": market_id, "outcome": "NO"},
     ],
 }
+
+if os.path.exists("config.example.json"):
+    with open("config.example.json", "r") as f:
+        existing_config = json.load(f)
+    config = {**existing_config, **config}
 
 with open("config.example.json", "w") as f:
     json.dump(config, f, indent=2)
