@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "ingest_pipeline.hpp"
+#include "transport/ingest_pipeline.hpp"
 
 static const std::string kTransportBookMessageJson = R"({
   "event_type": "book",

@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "json_parser.hpp"
+#include "transport/json_parser.hpp"
 
 static const std::string kBookMessageJson = R"({
   "event_type": "book",

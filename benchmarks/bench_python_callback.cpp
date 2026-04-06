@@ -1,7 +1,7 @@
 #include <benchmark/benchmark.h>
 #include <pybind11/embed.h>
 
-#include "strategy.hpp"
+#include "trading/strategy.hpp"
 #include "types/common.hpp"
 #include "types/polymarket.hpp"
 

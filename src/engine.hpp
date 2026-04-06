@@ -1,15 +1,10 @@
 #pragma once
-#include <atomic>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
-#include "exchange.hpp"
-#include "market_book.hpp"
-#include "market_data_transport.hpp"
-#include "portfolio_tracker.hpp"
-#include "strategy.hpp"
+#include "trading/strategy.hpp"
+#include "transport/market_data_transport.hpp"
 
 struct EngineConfig {
   std::string ws_url = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
@@ -27,6 +22,9 @@ struct EngineConfig {
     int socket_rcvbuf_bytes = 0;
     int busy_poll_us = 0;
     size_t recv_batch_size = 32;
+    int io_uring_queue_depth = 256;
+    int io_uring_buf_count = 256;
+    int io_uring_buf_size = 16384;
     PerfStatsConfig perf_stats;
   } runtime;
 

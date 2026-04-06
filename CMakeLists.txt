@@ -63,15 +63,20 @@ FetchContent_MakeAvailable(pybind11 spdlog simdjson ixwebsocket)
 
 # Core library
 add_library(polybench_core 
+    # Engine
     ${CMAKE_CURRENT_SOURCE_DIR}/src/engine.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/exchange.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ingest_pipeline.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/json_parser.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/market_book.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/perf_stats.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/polymarket_ws.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/portfolio_tracker.cpp
+    # Trading
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/trading/exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/trading/market_book.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/trading/portfolio_tracker.cpp
+    # Transport
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/ingest_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/json_parser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/polymarket_ws.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/ws_frame_parser.cpp
+    # Utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/logger.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/perf_stats.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread.cpp
 )
 

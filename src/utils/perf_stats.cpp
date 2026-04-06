@@ -1,9 +1,9 @@
-#include "perf_stats.hpp"
+#include "utils/perf_stats.hpp"
 
 #include <string_view>
 
 #define LOGGER_NAME "Perf"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 namespace {
 uint64_t load_relaxed(const std::atomic<uint64_t>& value) noexcept {

@@ -1,4 +1,4 @@
-#include "ingest_pipeline.hpp"
+#include "transport/ingest_pipeline.hpp"
 
 MessagePipeline::MessagePipeline(size_t capacity, PerfStats* perf_stats)
     : queue_(capacity), perf_stats_(perf_stats) {}

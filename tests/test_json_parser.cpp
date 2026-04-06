@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "json_parser.hpp"
+#include "transport/json_parser.hpp"
 #include "types/polymarket.hpp"
 
 class JsonParserTest : public ::testing::Test {

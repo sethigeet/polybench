@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 
-#include "perf_stats.hpp"
+#include "utils/perf_stats.hpp"
 #include "types/common.hpp"
 
 inline constexpr size_t kMessageBatchSize = 16;

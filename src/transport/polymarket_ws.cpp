@@ -1,11 +1,11 @@
-#include "polymarket_ws.hpp"
+#include "transport/polymarket_ws.hpp"
 
 #include <simdjson.h>
 
 #include "utils/thread.hpp"
 
 #define LOGGER_NAME "WebSocket"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 PolymarketWS::PolymarketWS(const TransportConfig& config)
     : config_(config),

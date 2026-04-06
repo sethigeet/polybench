@@ -8,8 +8,8 @@
 #include <mutex>
 #include <string_view>
 
-#include "json_parser.hpp"
-#include "perf_stats.hpp"
+#include "transport/json_parser.hpp"
+#include "utils/perf_stats.hpp"
 #include "types/ring_buffer.hpp"
 
 class MessagePipeline {

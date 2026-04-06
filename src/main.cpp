@@ -3,7 +3,7 @@
 
 #include "config.hpp"
 #include "engine.hpp"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 namespace py = pybind11;
 

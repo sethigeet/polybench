@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 // Measures the cost of a LOG_INFO call (message actually emitted)
 static void BM_LogInfo(benchmark::State& state) {

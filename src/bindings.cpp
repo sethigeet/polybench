@@ -2,14 +2,14 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "strategy.hpp"
+#include "trading/strategy.hpp"
 #include "types/common.hpp"
 #include "types/fixed_string.hpp"
 #include "types/polymarket.hpp"
 #include "types/small_vector.hpp"
 
 #define LOGGER_NAME "Python"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 namespace py = pybind11;
 

@@ -2,8 +2,8 @@
 
 #include <unordered_map>
 
-#include "exchange.hpp"
-#include "market_book.hpp"
+#include "trading/exchange.hpp"
+#include "trading/market_book.hpp"
 #include "types/common.hpp"
 
 class ExchangeBenchmark : public benchmark::Fixture {

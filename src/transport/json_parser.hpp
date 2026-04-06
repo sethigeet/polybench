@@ -5,7 +5,7 @@
 #include <optional>
 #include <string_view>
 
-#include "perf_stats.hpp"
+#include "utils/perf_stats.hpp"
 #include "types/polymarket.hpp"
 #include "types/small_vector.hpp"
 

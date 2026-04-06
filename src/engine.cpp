@@ -7,12 +7,12 @@
 #include <thread>
 #include <variant>
 
-#include "polymarket_ws.hpp"
+#include "transport/polymarket_ws.hpp"
 #include "types/fixed_string.hpp"
 #include "utils/thread.hpp"
 
 #define LOGGER_NAME "Engine"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 namespace {
 

@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "market_book.hpp"
+#include "trading/market_book.hpp"
 #include "types/common.hpp"
 
 static const MarketId kMarketId(

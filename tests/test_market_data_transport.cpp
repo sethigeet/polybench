@@ -4,8 +4,8 @@
 #include <chrono>
 #include <thread>
 
-#include "ingest_pipeline.hpp"
-#include "market_data_transport.hpp"
+#include "transport/ingest_pipeline.hpp"
+#include "transport/market_data_transport.hpp"
 
 class FakeTransport {
  public:

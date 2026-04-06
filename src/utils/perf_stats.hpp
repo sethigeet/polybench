@@ -1,12 +1,10 @@
 #pragma once
 
 #include <atomic>
-#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <string>
 #include <thread>
 
 struct PerfStatsConfig {

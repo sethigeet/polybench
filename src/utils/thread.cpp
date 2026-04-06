@@ -1,4 +1,4 @@
-#include "thread.hpp"
+#include "utils/thread.hpp"
 
 #if defined(__linux__)
 #include <pthread.h>
@@ -6,7 +6,7 @@
 #endif
 
 #define LOGGER_NAME "Utils::Thread"
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 namespace utils::thread {
 

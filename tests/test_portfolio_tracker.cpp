@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "portfolio_tracker.hpp"
+#include "trading/portfolio_tracker.hpp"
 #include "types/common.hpp"
 
 class PortfolioTrackerTest : public ::testing::Test {
