@@ -1,7 +1,7 @@
 {
   "ws_url": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
   "transport": {
-    "mode": "ixwebsocket",
+    "mode": "io_uring",
     "message_queue_capacity": 4096,
     "consumer_spin_count": 256,
     "consumer_wait_timeout_us": 500,
@@ -9,17 +9,20 @@
     "ingest_cpu_affinity": -1,
     "engine_cpu_affinity": -1,
     "enable_perf_stats": false,
-    "perf_log_interval_messages": 10000
+    "perf_log_interval_messages": 10000,
+    "io_uring_queue_depth": 256,
+    "io_uring_buf_count": 256,
+    "io_uring_buf_size": 16384
   },
   "assets": [
     {
-      "asset_id": "9071927158124339648289279313460688740570529269718301269592153198706548693611",
-      "market_id": "0xbe8c84ec261ad26b70f59e5265b455a5984da87e2ba4cf6db915c7af3e5df074",
+      "asset_id": "92486772271609489328894769125265074150714398308317639272444855275245361909400",
+      "market_id": "0x92a68350334673353892e1ebde5fbb2ca6fe34c49cc05e2c655516b341b51275",
       "outcome": "YES"
     },
     {
-      "asset_id": "81851105050096936294426449360385164939794240850789795482073737383857420012676",
-      "market_id": "0xbe8c84ec261ad26b70f59e5265b455a5984da87e2ba4cf6db915c7af3e5df074",
+      "asset_id": "57444606606474762200107095668868882329311791276559229246917422808796226452159",
+      "market_id": "0x92a68350334673353892e1ebde5fbb2ca6fe34c49cc05e2c655516b341b51275",
       "outcome": "NO"
     }
   ]

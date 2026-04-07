@@ -77,7 +77,7 @@ class ConfigLoader {
               << "  --config FILE     Load configuration from JSON file\n"
               << "  --url URL         WebSocket URL (default: "
                  "wss://ws-subscriptions-clob.polymarket.com/ws/market)\n"
-              << "  --transport MODE  Transport mode: ixwebsocket\n"
+              << "  --transport MODE  Transport mode: ixwebsocket, io_uring (Linux)\n"
               << "  --enable-perf-stats Enable ingest/dispatch performance counters\n"
               << "  --perf-log-interval N  Log perf stats every N parsed messages\n"
               << "  --queue-capacity N Set transport queue capacity\n"
@@ -129,6 +129,12 @@ class ConfigLoader {
           config.runtime.busy_poll_us = int(field.value().get_int64().value());
         } else if (key == "recv_batch_size") {
           config.runtime.recv_batch_size = static_cast<size_t>(field.value().get_uint64().value());
+        } else if (key == "io_uring_queue_depth") {
+          config.runtime.io_uring_queue_depth = int(field.value().get_int64().value());
+        } else if (key == "io_uring_buf_count") {
+          config.runtime.io_uring_buf_count = int(field.value().get_int64().value());
+        } else if (key == "io_uring_buf_size") {
+          config.runtime.io_uring_buf_size = int(field.value().get_int64().value());
         } else if (key == "enable_perf_stats") {
           config.runtime.perf_stats.enabled = bool(field.value().get_bool().value());
         } else if (key == "perf_log_interval_messages") {
@@ -183,6 +189,9 @@ class ConfigLoader {
 
   static TransportMode parse_transport_mode(const std::string& mode) {
     if (mode == "ixwebsocket" || mode == "ix_ws") return TransportMode::IxWebSocket;
+#if defined(__linux__) && defined(HAS_IO_URING)
+    if (mode == "io_uring" || mode == "io_uring_ws") return TransportMode::IoUring;
+#endif
     throw std::runtime_error("Unknown transport mode: " + mode);
   }
 

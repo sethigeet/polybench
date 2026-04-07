@@ -61,8 +61,25 @@ FetchContent_MakeAvailable(pybind11 spdlog simdjson ixwebsocket)
 # pybind11 automatically finds the Python interpreter and development files
 # find_package(Python 3.10 COMPONENTS Interpreter Development REQUIRED)
 
+# io_uring support (Linux only, requires liburing-dev)
+set(HAS_IO_URING OFF)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_package(PkgConfig QUIET)
+  if(PkgConfig_FOUND)
+    pkg_check_modules(URING IMPORTED_TARGET liburing>=2.4)
+    if(URING_FOUND)
+      set(HAS_IO_URING ON)
+      message(STATUS "liburing ${URING_VERSION} found — io_uring transport enabled")
+    else()
+      message(STATUS "liburing not found — io_uring transport disabled (install liburing-dev)")
+    endif()
+  endif()
+endif()
+
+find_package(OpenSSL REQUIRED)
+
 # Core library
-add_library(polybench_core 
+add_library(polybench_core
     # Engine
     ${CMAKE_CURRENT_SOURCE_DIR}/src/engine.cpp
     # Trading
@@ -73,17 +90,24 @@ add_library(polybench_core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/ingest_pipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/json_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/polymarket_ws.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/ws_frame_parser.cpp
     # Utils
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/perf_stats.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread.cpp
 )
 
+if(HAS_IO_URING)
+  target_sources(polybench_core PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/transport/io_uring_ws.cpp
+  )
+  target_link_libraries(polybench_core PUBLIC PkgConfig::URING OpenSSL::SSL OpenSSL::Crypto)
+  target_compile_definitions(polybench_core PUBLIC HAS_IO_URING=1)
+endif()
+
 target_include_directories(polybench_core PUBLIC src)
-target_link_libraries(polybench_core PUBLIC 
-    pybind11::embed 
-    spdlog::spdlog 
+target_link_libraries(polybench_core PUBLIC
+    pybind11::embed
+    spdlog::spdlog
     simdjson::simdjson
     ixwebsocket::ixwebsocket
 )

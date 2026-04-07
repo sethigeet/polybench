@@ -29,6 +29,9 @@ struct PerfStatsSnapshot {
   uint64_t total_queue_wait_ns = 0;
   uint64_t total_engine_dispatch_ns = 0;
   uint64_t total_polls = 0;
+  uint64_t io_uring_cqe_batches = 0;
+  uint64_t io_uring_total_cqes = 0;
+  uint64_t io_uring_buf_pool_exhausted = 0;
 };
 
 class PerfStats {
@@ -48,6 +51,7 @@ class PerfStats {
   void record_engine_dispatch(size_t processed_messages, uint64_t dispatch_ns) noexcept;
   void record_poll() noexcept;
   void record_message_type(std::string_view event_type) noexcept;
+  void record_io_uring_batch(size_t cqe_count) noexcept;
 
   [[nodiscard]] PerfStatsSnapshot snapshot() const noexcept;
 
@@ -85,4 +89,7 @@ class PerfStats {
   std::atomic<uint64_t> total_queue_wait_ns_{0};
   std::atomic<uint64_t> total_engine_dispatch_ns_{0};
   std::atomic<uint64_t> total_polls_{0};
+  std::atomic<uint64_t> io_uring_cqe_batches_{0};
+  std::atomic<uint64_t> io_uring_total_cqes_{0};
+  std::atomic<uint64_t> io_uring_buf_pool_exhausted_{0};
 };

@@ -53,6 +53,12 @@ void PerfStats::record_poll() noexcept {
   total_polls_.fetch_add(1, std::memory_order_relaxed);
 }
 
+void PerfStats::record_io_uring_batch(size_t cqe_count) noexcept {
+  if (!enabled()) return;
+  io_uring_cqe_batches_.fetch_add(1, std::memory_order_relaxed);
+  io_uring_total_cqes_.fetch_add(cqe_count, std::memory_order_relaxed);
+}
+
 void PerfStats::record_message_type(std::string_view event_type) noexcept {
   if (!enabled()) return;
 
@@ -87,6 +93,9 @@ PerfStatsSnapshot PerfStats::snapshot() const noexcept {
   snapshot.total_queue_wait_ns = load_relaxed(total_queue_wait_ns_);
   snapshot.total_engine_dispatch_ns = load_relaxed(total_engine_dispatch_ns_);
   snapshot.total_polls = load_relaxed(total_polls_);
+  snapshot.io_uring_cqe_batches = load_relaxed(io_uring_cqe_batches_);
+  snapshot.io_uring_total_cqes = load_relaxed(io_uring_total_cqes_);
+  snapshot.io_uring_buf_pool_exhausted = load_relaxed(io_uring_buf_pool_exhausted_);
   return snapshot;
 }
 
@@ -139,4 +148,12 @@ void PerfStats::log_snapshot() const {
             "avg_dispatch_ns={:.1f} backpressure={}",
             snap.frames_received, snap.bytes_received, snap.messages_parsed, snap.parse_errors,
             snap.queue_dropped_messages, avg_parse_ns, avg_dispatch_ns, snap.queue_backpressure_events);
+
+  if (snap.io_uring_cqe_batches > 0) {
+    double avg_cqes = static_cast<double>(snap.io_uring_total_cqes) / snap.io_uring_cqe_batches;
+    logger::get("Perf")
+        .info("io_uring cqe_batches={} total_cqes={} avg_cqes_per_batch={:.1f} buf_exhausted={}",
+              snap.io_uring_cqe_batches, snap.io_uring_total_cqes, avg_cqes,
+              snap.io_uring_buf_pool_exhausted);
+  }
 }

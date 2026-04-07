@@ -8,7 +8,12 @@
 
 inline constexpr size_t kMessageBatchSize = 16;
 
-enum class TransportMode { IxWebSocket };
+enum class TransportMode {
+  IxWebSocket,
+#if defined(__linux__) && defined(HAS_IO_URING)
+  IoUring,
+#endif
+};
 
 struct TransportConfig {
   TransportMode mode = TransportMode::IxWebSocket;
@@ -30,6 +35,11 @@ struct TransportConfig {
   int socket_rcvbuf_bytes = 0;
   int busy_poll_us = 0;
   size_t recv_batch_size = 32;
+
+  // io_uring-specific tuning
+  int io_uring_queue_depth = 256;
+  int io_uring_buf_count = 256;
+  int io_uring_buf_size = 16384;
 
   PerfStatsConfig perf_stats;
 };

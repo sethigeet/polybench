@@ -7,7 +7,12 @@
 #include <thread>
 #include <variant>
 
+#include "trading/exchange.hpp"
+#include "trading/portfolio_tracker.hpp"
 #include "transport/polymarket_ws.hpp"
+#if defined(__linux__) && defined(HAS_IO_URING)
+#include "transport/io_uring_ws.hpp"
+#endif
 #include "types/fixed_string.hpp"
 #include "utils/thread.hpp"
 
@@ -43,6 +48,9 @@ TransportConfig make_transport_config(const EngineConfig& config) {
   transport_config.socket_rcvbuf_bytes = config.runtime.socket_rcvbuf_bytes;
   transport_config.busy_poll_us = config.runtime.busy_poll_us;
   transport_config.recv_batch_size = config.runtime.recv_batch_size;
+  transport_config.io_uring_queue_depth = config.runtime.io_uring_queue_depth;
+  transport_config.io_uring_buf_count = config.runtime.io_uring_buf_count;
+  transport_config.io_uring_buf_size = config.runtime.io_uring_buf_size;
   transport_config.perf_stats = config.runtime.perf_stats;
   return transport_config;
 }
@@ -349,6 +357,10 @@ int run_engine(std::shared_ptr<Strategy> strategy, const EngineConfig& config) {
   switch (config.runtime.mode) {
     case TransportMode::IxWebSocket:
       return run_engine_impl<PolymarketWS>(std::move(strategy), config);
+#if defined(__linux__) && defined(HAS_IO_URING)
+    case TransportMode::IoUring:
+      return run_engine_impl<IoUringWS>(std::move(strategy), config);
+#endif
   }
 
   throw std::runtime_error("Unknown transport mode");
