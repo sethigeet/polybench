@@ -149,9 +149,15 @@ if(BUILD_TESTS)
         tests/test_market_data_transport.cpp
         tests/test_portfolio_tracker.cpp
         tests/test_json_parser.cpp
+        tests/test_ws_frame_parser.cpp
+        tests/test_io_uring_ws.cpp
     )
     target_link_libraries(polybench_tests PRIVATE polybench_core GTest::gtest_main)
     target_include_directories(polybench_tests PRIVATE src)
+
+    if(HAS_IO_URING)
+      target_link_libraries(polybench_tests PRIVATE PkgConfig::URING OpenSSL::SSL OpenSSL::Crypto)
+    endif()
 
     include(GoogleTest)
     gtest_discover_tests(polybench_tests)
