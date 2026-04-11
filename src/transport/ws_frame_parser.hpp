@@ -276,9 +276,14 @@ void WsFrameParser::feed(const uint8_t* data, size_t len, Visitor&& on_frame) {
           // Now in ReadPayload
         }
 
-        // If payload is empty, fall through to ReadPayload which will emit immediately
-        break;
+        // If there is payload to read, break and let the next while-iteration
+        // enter ReadPayload.  For zero-payload frames, fall through immediately
+        // so they are emitted even when pos == len.
+        if (payload_len_ > 0) {
+          break;
+        }
       }
+        [[fallthrough]];
 
       case State::ReadPayload: {
         if (payload_len_ > 0) {
