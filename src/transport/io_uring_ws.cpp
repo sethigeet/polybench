@@ -418,9 +418,13 @@ void IoUringWS::io_loop() {
         sends.swap(send_queue_);
       }
       for (auto& s : sends) {
-        if (io_ctx_->phase == IoContext::Phase::Connected && io_ctx_->tls_session.ssl) {
-          SSL_write(io_ctx_->tls_session.ssl, s.data.data(), static_cast<int>(s.data.size()));
-          flush_tls_wbio(*io_ctx_);
+        if (io_ctx_->phase == IoContext::Phase::Connected) {
+          if (io_ctx_->use_tls && io_ctx_->tls_session.ssl) {
+            SSL_write(io_ctx_->tls_session.ssl, s.data.data(), static_cast<int>(s.data.size()));
+            flush_tls_wbio(*io_ctx_);
+          } else if (!io_ctx_->use_tls) {
+            submit_send(*io_ctx_, s.data.data(), s.data.size());
+          }
         }
       }
     }
@@ -432,8 +436,13 @@ void IoUringWS::io_loop() {
           std::chrono::duration_cast<std::chrono::seconds>(now - io_ctx_->last_ping_time);
       if (elapsed.count() >= config_.ping_interval_secs) {
         auto ping_frame = WsFrameParser::build_ping_frame();
-        SSL_write(io_ctx_->tls_session.ssl, ping_frame.data(), static_cast<int>(ping_frame.size()));
-        flush_tls_wbio(*io_ctx_);
+        if (io_ctx_->use_tls && io_ctx_->tls_session.ssl) {
+          SSL_write(io_ctx_->tls_session.ssl, ping_frame.data(),
+                    static_cast<int>(ping_frame.size()));
+          flush_tls_wbio(*io_ctx_);
+        } else if (!io_ctx_->use_tls) {
+          submit_send(*io_ctx_, ping_frame.data(), ping_frame.size());
+        }
         io_ctx_->last_ping_time = now;
       }
     }
